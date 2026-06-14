@@ -1,0 +1,75 @@
+import { defineConfig, type Plugin } from "vite";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
+import { fetchIcs } from "./server/ics-proxy";
+
+// ローカル開発で /api/ics を本番(Vercel Function)と同じロジックで提供するミドルウェア。
+function icsProxyDevPlugin(): Plugin {
+  return {
+    name: "ics-proxy-dev",
+    configureServer(server) {
+      server.middlewares.use("/api/ics", async (req, res) => {
+        const reqUrl = (req as { url?: string }).url ?? "";
+        const url = new URL(reqUrl, "http://localhost").searchParams.get("url");
+        const result = await fetchIcs(url);
+        if (!result.ok) {
+          res.statusCode = result.status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: result.error }));
+          return;
+        }
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+        res.end(result.body);
+      });
+    },
+  };
+}
+
+// 静的PWA + ICS取得用の極小プロキシ（CORS回避のみ）。
+export default defineConfig({
+  plugins: [
+    react(),
+    icsProxyDevPlugin(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["icon.svg"],
+      manifest: {
+        name: "スカッと予定 — 話す/撮るだけ",
+        short_name: "スカッと予定",
+        description: "話す・撮るだけで予定が入る入力特化スケジュールアプリ",
+        lang: "ja",
+        theme_color: "#1f2937",
+        background_color: "#0f172a",
+        display: "standalone",
+        orientation: "portrait",
+        start_url: "/",
+        icons: [
+          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
+        ],
+      },
+      workbox: {
+        // アプリシェルのみプリキャッシュ。WebLLM/Tesseractの大容量チャンクは
+        // オンデマンドDL（ブラウザHTTPキャッシュに委譲）し、プリキャッシュ対象外にする。
+        globPatterns: ["**/*.{css,html,svg,woff2}", "assets/index-*.js", "assets/workbox-*.js"],
+        globIgnores: ["**/webllm-*.js", "**/tesseract-*.js"],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
+    }),
+  ],
+  build: {
+    rollupOptions: {
+      output: {
+        // 重量級ライブラリを名前付きチャンクに分離（プリキャッシュ除外のため）
+        manualChunks(id) {
+          if (id.includes("@mlc-ai/web-llm")) return "webllm";
+          if (id.includes("tesseract.js")) return "tesseract";
+          return undefined;
+        },
+      },
+    },
+  },
+  server: {
+    host: true, // 同一LANのスマホ実機から http://<PCのIP>:5173 で確認可能
+  },
+});
