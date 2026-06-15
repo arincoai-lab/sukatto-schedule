@@ -6,7 +6,7 @@
   "description": "話す/撮るだけで予定が入る 入力特化スケジュールPWA",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
