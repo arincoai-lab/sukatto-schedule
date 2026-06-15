@@ -60,9 +60,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // 重量級ライブラリを名前付きチャンクに分離（プリキャッシュ除外のため）
+        // Tesseractは名前付きチャンクに分離（プリキャッシュ除外のため）。
+        // WebLLMはバンドルせずCDN実行のためここには現れない。
         manualChunks(id) {
-          if (id.includes("@mlc-ai/web-llm")) return "webllm";
           if (id.includes("tesseract.js")) return "tesseract";
           return undefined;
         },

@@ -6,6 +6,11 @@ import type { ParsedEvent, ParseResult, EventSource } from "../types";
 
 const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 
+// WebLLM本体はバンドルせず実行時にCDNから読み込む（WebLLM公式推奨のCDN利用）。
+// これによりビルド成果物に巨大チャンクを含めず、デプロイのOOMを回避する。
+// 変数経由の動的importにすることで Vite/TS の静的解決を回避（@vite-ignore でVite素通し）。
+const WEBLLM_CDN = "https://esm.run/@mlc-ai/web-llm";
+
 export type LoadProgress = (report: { progress: number; text: string }) => void;
 
 let enginePromise: Promise<MLCEngineInterface> | null = null;
@@ -14,8 +19,7 @@ export function isWebGpuAvailable(): boolean {
   return typeof navigator !== "undefined" && "gpu" in navigator;
 }
 
-// エンジンは初回利用時に遅延初期化。WebLLM本体も動的importで初回のみDLする
-// （初期バンドルを軽量に保つため）。
+// エンジンは初回利用時に遅延初期化。WebLLM本体・モデルとも初回のみ取得しキャッシュ。
 export async function ensureEngine(
   onProgress?: LoadProgress,
 ): Promise<MLCEngineInterface> {
@@ -24,7 +28,7 @@ export async function ensureEngine(
   }
   if (!enginePromise) {
     enginePromise = (async () => {
-      const webllm = await import("@mlc-ai/web-llm");
+      const webllm = (await import(/* @vite-ignore */ WEBLLM_CDN)) as typeof import("@mlc-ai/web-llm");
       return webllm.CreateMLCEngine(MODEL_ID, {
         initProgressCallback: (r) =>
           onProgress?.({ progress: r.progress, text: r.text }),
