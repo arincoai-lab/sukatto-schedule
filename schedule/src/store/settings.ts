@@ -14,6 +14,12 @@ export interface AppSettings {
 
 const STORAGE_KEY = "sukatto.settings.v1";
 
+// 既定のGoogle OAuth クライアントID（公開値）。
+// このアプリは個人用のため、入力ミス（typo）を完全に避けるためコードに直接埋め込む。
+// 必要に応じて設定画面から上書き可能。
+const DEFAULT_GOOGLE_CLIENT_ID =
+  "253285776182-7m3pqgmrah6b6g3m2l054o39iiktp5dq.apps.googleusercontent.com";
+
 // 初回に編集/削除可能なサンプルテンプレを用意（毎日の入力短縮の体験を即提供）
 const DEFAULT_TEMPLATES: EventTemplate[] = [
   { id: "tpl-work", label: "出勤", title: "出勤", allDay: false, startTime: "09:00", durationMin: 540 },
@@ -22,7 +28,7 @@ const DEFAULT_TEMPLATES: EventTemplate[] = [
 ];
 
 const DEFAULTS: AppSettings = {
-  googleClientId: "",
+  googleClientId: DEFAULT_GOOGLE_CLIENT_ID,
   defaultCalendarId: "primary",
   defaultDurationMin: 60,
   preferLLM: true,
