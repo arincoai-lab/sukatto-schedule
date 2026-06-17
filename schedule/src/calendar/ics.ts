@@ -10,7 +10,6 @@ export interface IcsSource {
   url: string;
 }
 
-const WINDOW_DAYS = 35;
 const MAX_OCCURRENCES = 200; // 繰り返し展開の暴走防止
 
 function proxyUrl(icsUrl: string): string {
@@ -47,19 +46,18 @@ function toCalendarEvent(
   };
 }
 
-function parseIcsText(text: string, sourceLabel: string, now: Date): CalendarEvent[] {
+function parseIcsText(
+  text: string,
+  sourceLabel: string,
+  rangeStart: Date,
+  rangeEnd: Date,
+): CalendarEvent[] {
   const jcal = ICAL.parse(text);
   const comp = new ICAL.Component(jcal);
   const vevents = comp.getAllSubcomponents("vevent");
 
-  const windowStart = ICAL.Time.fromJSDate(
-    new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-    false,
-  );
-  const windowEnd = ICAL.Time.fromJSDate(
-    new Date(now.getTime() + WINDOW_DAYS * 86_400_000),
-    false,
-  );
+  const windowStart = ICAL.Time.fromJSDate(rangeStart, false);
+  const windowEnd = ICAL.Time.fromJSDate(rangeEnd, false);
 
   const out: CalendarEvent[] = [];
 
@@ -104,10 +102,11 @@ function parseIcsText(text: string, sourceLabel: string, now: Date): CalendarEve
   return out;
 }
 
-// 単一ソースを取得・解析。失敗はソース単位で握りつぶし、warningsへ集約する側で扱う。
+// 単一ソースを指定期間で取得・解析。失敗はソース単位で握りつぶし、warningsへ集約する側で扱う。
 export async function fetchIcsSource(
   source: IcsSource,
-  now: Date = new Date(),
+  rangeStart: Date,
+  rangeEnd: Date,
 ): Promise<CalendarEvent[]> {
   const resp = await fetch(proxyUrl(source.url));
   if (!resp.ok) {
@@ -115,5 +114,5 @@ export async function fetchIcsSource(
     throw new Error(`「${source.label}」取得失敗: ${detail.slice(0, 120) || resp.status}`);
   }
   const text = await resp.text();
-  return parseIcsText(text, source.label, now);
+  return parseIcsText(text, source.label, rangeStart, rangeEnd);
 }

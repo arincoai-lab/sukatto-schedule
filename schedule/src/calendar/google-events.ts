@@ -107,6 +107,41 @@ export async function deleteEvent(
   }
 }
 
+function mapGApiEvent(it: GApiEvent): CalendarEvent {
+  const allDay = Boolean(it.start.date);
+  return {
+    id: it.id,
+    title: it.summary || "(無題)",
+    start: it.start.dateTime ?? it.start.date ?? "",
+    end: it.end?.dateTime ?? it.end?.date,
+    allDay,
+    location: it.location,
+    provider: "google" as const,
+  };
+}
+
+// 指定期間の予定を取得（カレンダー月表示用）
+export async function listEventsRange(
+  token: string,
+  calendarId: string,
+  timeMin: Date,
+  timeMax: Date,
+  maxResults = 250,
+): Promise<CalendarEvent[]> {
+  const params = new URLSearchParams({
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: String(maxResults),
+  });
+  const data = (await gfetch(
+    token,
+    `/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+  )) as { items?: GApiEvent[] };
+  return (data.items ?? []).map(mapGApiEvent);
+}
+
 // 直近の予定を取得（アジェンダ表示用）
 export async function listUpcoming(
   token: string,
@@ -125,19 +160,7 @@ export async function listUpcoming(
     token,
     `/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
   )) as { items?: GApiEvent[] };
-
-  return (data.items ?? []).map((it) => {
-    const allDay = Boolean(it.start.date);
-    return {
-      id: it.id,
-      title: it.summary || "(無題)",
-      start: it.start.dateTime ?? it.start.date ?? "",
-      end: it.end?.dateTime ?? it.end?.date,
-      allDay,
-      location: it.location,
-      provider: "google" as const,
-    };
-  });
+  return (data.items ?? []).map(mapGApiEvent);
 }
 
 interface GCalListItem {

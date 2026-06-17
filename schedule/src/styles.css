@@ -320,6 +320,145 @@ body {
   padding: 4px;
 }
 
+/* 表示切替（リスト/カレンダー） */
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  margin: 4px 0 12px;
+}
+
+.view-toggle button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-toggle button.active {
+  background: var(--accent-strong);
+  color: #04263a;
+}
+
+/* 月カレンダー */
+.month-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.month-nav {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  width: 40px;
+  height: 36px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.month-title {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.month-weekdays {
+  margin-bottom: 3px;
+}
+
+.wd {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 2px 0;
+}
+
+.wd.sun {
+  color: #f87171;
+}
+
+.wd.sat {
+  color: #60a5fa;
+}
+
+.day-cell {
+  aspect-ratio: 1 / 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  padding: 4px 0 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.day-cell.dim {
+  opacity: 0.35;
+}
+
+.day-cell.today {
+  border-color: var(--accent);
+}
+
+.day-cell.selected {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.day-num {
+  font-size: 0.8rem;
+}
+
+.day-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  min-height: 6px;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.dot.google {
+  background: var(--accent);
+}
+
+.dot.ics {
+  background: var(--warn);
+}
+
+.month-day-list {
+  margin-top: 14px;
+}
+
 /* テンプレチップ */
 .chip-row {
   display: flex;

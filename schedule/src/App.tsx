@@ -9,9 +9,15 @@ import {
   requestToken,
   signOut,
 } from "./calendar/google-auth";
-import { insertEvent, listUpcoming, updateEvent, deleteEvent } from "./calendar/google-events";
+import {
+  insertEvent,
+  listEventsRange,
+  updateEvent,
+  deleteEvent,
+} from "./calendar/google-events";
 import { fetchIcsSource } from "./calendar/ics";
 import AgendaView from "./calendar/AgendaView";
+import MonthView from "./calendar/MonthView";
 import EventConfirm from "./confirm/EventConfirm";
 import EventEdit from "./confirm/EventEdit";
 import QuickAdd from "./input/QuickAdd";
@@ -30,6 +36,12 @@ export default function App() {
   const [agenda, setAgenda] = useState<CalendarEvent[]>([]);
   const [loadingAgenda, setLoadingAgenda] = useState(false);
   const [icsWarnings, setIcsWarnings] = useState<string[]>([]);
+
+  // 表示モード（リスト / 月カレンダー）
+  const [viewMode, setViewMode] = useState<"agenda" | "month">("agenda");
+  const [monthCursor, setMonthCursor] = useState<Date>(() => new Date());
+  const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
+  const [monthLoading, setMonthLoading] = useState(false);
 
   const [modal, setModal] = useState<Modal>("none");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
@@ -52,43 +64,80 @@ export default function App() {
     [settings.defaultReminderMin],
   );
 
-  const refreshAgenda = useCallback(async () => {
-    const token = getAccessToken();
-    const hasIcs = settings.icsSources.length > 0;
-    if (!token && !hasIcs) return;
-
-    setLoadingAgenda(true);
-    const all: CalendarEvent[] = [];
-    const warns: string[] = [];
-    try {
+  // Google + ICS を指定期間でまとめて取得（リスト/月表示で共用）
+  const loadRange = useCallback(
+    async (start: Date, end: Date) => {
+      const token = getAccessToken();
+      const all: CalendarEvent[] = [];
+      const warns: string[] = [];
       if (token) {
-        const items = await listUpcoming(token, settings.defaultCalendarId);
+        const items = await listEventsRange(token, settings.defaultCalendarId, start, end);
         all.push(...items.map((e) => ({ ...e, calendarSummary: e.calendarSummary ?? "Google" })));
         setConnected(true);
       }
-      // 外部ICSは並列取得。ソース単位の失敗は警告にまとめ、他は表示を続ける。
       const results = await Promise.allSettled(
-        settings.icsSources.map((s) => fetchIcsSource(s)),
+        settings.icsSources.map((s) => fetchIcsSource(s, start, end)),
       );
       results.forEach((r, i) => {
         if (r.status === "fulfilled") all.push(...r.value);
         else warns.push(`「${settings.icsSources[i].label}」の取得に失敗しました`);
       });
-
       all.sort((a, b) => a.start.localeCompare(b.start));
-      setAgenda(all);
-      setIcsWarnings(warns);
+      return { events: all, warnings: warns };
+    },
+    [settings.defaultCalendarId, settings.icsSources],
+  );
+
+  const refreshAgenda = useCallback(async () => {
+    const token = getAccessToken();
+    const hasIcs = settings.icsSources.length > 0;
+    if (!token && !hasIcs) return;
+    setLoadingAgenda(true);
+    try {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start.getTime() + 35 * 86_400_000);
+      const { events, warnings } = await loadRange(start, end);
+      setAgenda(events);
+      setIcsWarnings(warnings);
     } catch (err) {
       setError(err instanceof Error ? err.message : "予定の取得に失敗しました");
     } finally {
       setLoadingAgenda(false);
     }
-  }, [settings.defaultCalendarId, settings.icsSources]);
+  }, [loadRange, settings.icsSources.length]);
+
+  // 表示中の月（6週グリッド分）の予定を取得
+  const refreshMonth = useCallback(async () => {
+    const token = getAccessToken();
+    const hasIcs = settings.icsSources.length > 0;
+    if (!token && !hasIcs) return;
+    setMonthLoading(true);
+    try {
+      const first = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
+      const start = new Date(first);
+      start.setDate(1 - first.getDay()); // グリッド先頭(日曜)
+      const end = new Date(start.getTime() + 42 * 86_400_000);
+      const { events, warnings } = await loadRange(start, end);
+      setMonthEvents(events);
+      setIcsWarnings(warnings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "予定の取得に失敗しました");
+    } finally {
+      setMonthLoading(false);
+    }
+  }, [loadRange, monthCursor, settings.icsSources.length]);
 
   useEffect(() => {
     if (hasValidToken()) setConnected(true);
     if (hasValidToken() || settings.icsSources.length > 0) void refreshAgenda();
   }, [refreshAgenda, settings.icsSources.length]);
+
+  // 月表示の時は表示月に応じて取得
+  useEffect(() => {
+    if (viewMode !== "month") return;
+    if (hasValidToken() || settings.icsSources.length > 0) void refreshMonth();
+  }, [viewMode, refreshMonth, settings.icsSources.length]);
 
   const connect = async () => {
     setError(null);
@@ -101,6 +150,7 @@ export default function App() {
       await requestToken(settings.googleClientId);
       setConnected(true);
       await refreshAgenda();
+      if (viewMode === "month") await refreshMonth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google接続に失敗しました");
     }
@@ -150,6 +200,7 @@ export default function App() {
       setParseResult(null);
       setConnected(true);
       await refreshAgenda();
+      if (viewMode === "month") await refreshMonth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "登録に失敗しました");
     } finally {
@@ -190,6 +241,7 @@ export default function App() {
       setEditing(null);
       setEditingId(null);
       await refreshAgenda();
+      if (viewMode === "month") await refreshMonth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新に失敗しました");
     } finally {
@@ -207,6 +259,7 @@ export default function App() {
       setEditing(null);
       setEditingId(null);
       await refreshAgenda();
+      if (viewMode === "month") await refreshMonth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除に失敗しました");
     } finally {
@@ -269,6 +322,7 @@ export default function App() {
                 signOut();
                 setConnected(false);
                 setAgenda([]);
+                setMonthEvents([]);
               }}
             >
               切断
@@ -276,12 +330,45 @@ export default function App() {
           </div>
         )}
 
-        <AgendaView
-          events={agenda}
-          loading={loadingAgenda}
-          connected={connected || settings.icsSources.length > 0}
-          onSelect={onSelectEvent}
-        />
+        {(connected || settings.icsSources.length > 0) && (
+          <div className="view-toggle">
+            <button
+              className={viewMode === "agenda" ? "active" : ""}
+              onClick={() => setViewMode("agenda")}
+            >
+              リスト
+            </button>
+            <button
+              className={viewMode === "month" ? "active" : ""}
+              onClick={() => setViewMode("month")}
+            >
+              カレンダー
+            </button>
+          </div>
+        )}
+
+        {viewMode === "agenda" ? (
+          <AgendaView
+            events={agenda}
+            loading={loadingAgenda}
+            connected={connected || settings.icsSources.length > 0}
+            onSelect={onSelectEvent}
+          />
+        ) : (
+          <MonthView
+            events={monthEvents}
+            monthCursor={monthCursor}
+            loading={monthLoading}
+            onPrevMonth={() =>
+              setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))
+            }
+            onNextMonth={() =>
+              setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))
+            }
+            onToday={() => setMonthCursor(new Date())}
+            onSelectEvent={onSelectEvent}
+          />
+        )}
       </main>
 
       <nav className="input-dock">
