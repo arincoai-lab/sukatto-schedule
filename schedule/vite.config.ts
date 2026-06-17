@@ -35,8 +35,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "スカッと予定 — 話す/撮るだけ",
-        short_name: "スカッと予定",
+        name: "Skatto Schedular",
+        short_name: "Skatto Schedular",
         description: "話す・撮るだけで予定が入る入力特化スケジュールアプリ",
         lang: "ja",
         theme_color: "#1f2937",

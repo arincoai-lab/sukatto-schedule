@@ -188,19 +188,27 @@ export default function App() {
     [settings.preferLLM, settings.defaultDurationMin, withDefaultReminder],
   );
 
+  // Googleカレンダーへまとめて登録し、表示を更新
+  const registerEvents = useCallback(
+    async (events: ParsedEvent[]) => {
+      const token = await ensureToken(settings.googleClientId);
+      for (const ev of events) {
+        await insertEvent(token, settings.defaultCalendarId, ev);
+      }
+      setConnected(true);
+      await refreshAgenda();
+      if (viewMode === "month") await refreshMonth();
+    },
+    [settings.googleClientId, settings.defaultCalendarId, refreshAgenda, refreshMonth, viewMode],
+  );
+
   // 確認後 → Googleカレンダーへ登録
   const confirmEvents = async (events: ParsedEvent[]) => {
     setSaving(true);
     setError(null);
     try {
-      const token = await ensureToken(settings.googleClientId);
-      for (const ev of events) {
-        await insertEvent(token, settings.defaultCalendarId, ev);
-      }
+      await registerEvents(events);
       setParseResult(null);
-      setConnected(true);
-      await refreshAgenda();
-      if (viewMode === "month") await refreshMonth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "登録に失敗しました");
     } finally {
@@ -208,10 +216,18 @@ export default function App() {
     }
   };
 
-  const pickTemplate = (t: EventTemplate, dateStr: string) => {
+  // クイック登録: 確認画面をスキップして即登録
+  const pickTemplate = async (t: EventTemplate, dateStr: string) => {
     const ev = buildEventFromTemplate(t, dateStr, settings.defaultDurationMin);
     setError(null);
-    setParseResult({ events: withDefaultReminder([ev]), engine: "rule" });
+    setParsing(`「${t.label}」を登録中…`);
+    try {
+      await registerEvents(withDefaultReminder([ev]));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "登録に失敗しました");
+    } finally {
+      setParsing(null);
+    }
   };
 
   // アジェンダのGoogle予定をタップ → 編集モーダルへ
@@ -277,13 +293,10 @@ export default function App() {
   return (
     <>
       <header className="app-header">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h1>スカッと予定</h1>
-          <button className="link-btn" onClick={() => setModal("settings")}>
-            設定
-          </button>
-        </div>
-        <p className="sub">話す・撮る・打つ → 確認 → Googleカレンダーへ</p>
+        <h1>Skatto Schedular</h1>
+        <button className="link-btn" onClick={() => setModal("settings")}>
+          設定
+        </button>
       </header>
 
       <main className="app-main">
@@ -300,7 +313,9 @@ export default function App() {
           </div>
         )}
 
-        <TemplateBar templates={settings.templates} onPick={pickTemplate} />
+        {viewMode === "agenda" && (
+          <TemplateBar templates={settings.templates} onPick={pickTemplate} />
+        )}
 
         {!connected && (
           <div className="card" style={{ marginBottom: 16 }}>
@@ -347,28 +362,30 @@ export default function App() {
           </div>
         )}
 
-        {viewMode === "agenda" ? (
-          <AgendaView
-            events={agenda}
-            loading={loadingAgenda}
-            connected={connected || settings.icsSources.length > 0}
-            onSelect={onSelectEvent}
-          />
-        ) : (
-          <MonthView
-            events={monthEvents}
-            monthCursor={monthCursor}
-            loading={monthLoading}
-            onPrevMonth={() =>
-              setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))
-            }
-            onNextMonth={() =>
-              setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))
-            }
-            onToday={() => setMonthCursor(new Date())}
-            onSelectEvent={onSelectEvent}
-          />
-        )}
+        <div className="content">
+          {viewMode === "agenda" ? (
+            <AgendaView
+              events={agenda}
+              loading={loadingAgenda}
+              connected={connected || settings.icsSources.length > 0}
+              onSelect={onSelectEvent}
+            />
+          ) : (
+            <MonthView
+              events={monthEvents}
+              monthCursor={monthCursor}
+              loading={monthLoading}
+              onPrevMonth={() =>
+                setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))
+              }
+              onNextMonth={() =>
+                setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))
+              }
+              onToday={() => setMonthCursor(new Date())}
+              onSelectEvent={onSelectEvent}
+            />
+          )}
+        </div>
       </main>
 
       <nav className="input-dock">

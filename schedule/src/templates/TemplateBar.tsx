@@ -70,7 +70,7 @@ export default function TemplateBar({ templates, onPick }: Props) {
                 やめる
               </button>
               <button className="btn primary" onClick={confirm}>
-                内容を確認
+                登録する
               </button>
             </div>
           </div>

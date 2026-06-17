@@ -35,30 +35,40 @@ body {
 #root {
   max-width: 540px;
   margin: 0 auto;
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-header {
-  padding: env(safe-area-inset-top) 16px 8px;
-  padding-top: max(env(safe-area-inset-top), 12px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(env(safe-area-inset-top), 8px) 16px 6px;
 }
 
 .app-header h1 {
-  font-size: 1.15rem;
-  margin: 8px 0 2px;
-}
-
-.app-header .sub {
-  color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 1.05rem;
   margin: 0;
+  letter-spacing: 0.01em;
 }
 
 .app-main {
   flex: 1;
-  padding: 12px 16px 120px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 2px 14px 0;
+}
+
+/* 内側スクロール領域（ヘッダー・テンプレ・トグル・入力ドックは固定） */
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 92px; /* 入力ドック分 */
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 入力ドック（画面下部固定の大ボタン） */
@@ -71,17 +81,17 @@ body {
   max-width: 540px;
   display: flex;
   gap: 10px;
-  padding: 12px 16px;
-  padding-bottom: max(env(safe-area-inset-bottom), 16px);
-  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  padding: 8px 14px;
+  padding-bottom: max(env(safe-area-inset-bottom), 10px);
+  background: linear-gradient(to top, var(--bg) 78%, transparent);
 }
 
 .dock-btn {
   flex: 1;
   border: none;
-  border-radius: var(--radius);
-  padding: 16px 8px;
-  font-size: 0.9rem;
+  border-radius: 14px;
+  padding: 10px 8px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text);
   background: var(--surface);
@@ -89,7 +99,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   cursor: pointer;
   transition: transform 0.08s ease, background 0.15s ease;
 }
@@ -105,7 +115,7 @@ body {
 }
 
 .dock-btn .ico {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   line-height: 1;
 }
 
@@ -135,9 +145,9 @@ body {
 
 .section-label {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   letter-spacing: 0.04em;
-  margin: 18px 4px 8px;
+  margin: 8px 4px 5px;
   text-transform: uppercase;
 }
 
@@ -328,7 +338,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px;
-  margin: 4px 0 12px;
+  margin: 4px 0 8px;
 }
 
 .view-toggle button {
@@ -402,7 +412,7 @@ body {
 }
 
 .day-cell {
-  aspect-ratio: 1 / 1;
+  min-height: 44px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -410,8 +420,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 3px;
-  padding: 4px 0 0;
+  gap: 2px;
+  padding: 3px 0 0;
   color: var(--text);
   cursor: pointer;
 }
@@ -456,15 +466,15 @@ body {
 }
 
 .month-day-list {
-  margin-top: 14px;
+  margin-top: 8px;
 }
 
 /* クイック登録テンプレ（折り返しグリッド・横スクロール無し） */
 .template-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 8px;
-  margin: 2px 0 6px;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 7px;
+  margin: 0 0 4px;
 }
 
 .template-chip {
@@ -472,12 +482,12 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  min-height: 62px;
+  gap: 2px;
+  min-height: 50px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 8px;
+  border-radius: 12px;
+  padding: 8px 6px;
   color: var(--text);
   cursor: pointer;
   transition: transform 0.08s ease, background 0.15s ease;
