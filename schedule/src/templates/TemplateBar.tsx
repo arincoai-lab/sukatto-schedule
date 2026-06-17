@@ -34,13 +34,11 @@ export default function TemplateBar({ templates, onPick }: Props) {
   return (
     <>
       <div className="section-label">クイック登録</div>
-      <div className="chip-row">
+      <div className="template-grid">
         {templates.map((t) => (
-          <button key={t.id} className="chip" onClick={() => open(t)}>
-            {t.label}
-            <span className="chip-sub">
-              {t.allDay ? "終日" : t.startTime}
-            </span>
+          <button key={t.id} className="template-chip" onClick={() => open(t)}>
+            <span className="template-chip-label">{t.label}</span>
+            <span className="template-chip-sub">{t.allDay ? "終日" : t.startTime}</span>
           </button>
         ))}
       </div>
