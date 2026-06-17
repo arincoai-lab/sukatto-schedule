@@ -42,7 +42,9 @@ export function loadSettings(): AppSettings {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULTS };
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    return { ...DEFAULTS, ...parsed };
+    // クライアントIDは常に正しい既定値を強制（過去にtypoで保存された誤値を自動補正）。
+    // 個人用・単一クライアントのため上書きせず固定する。
+    return { ...DEFAULTS, ...parsed, googleClientId: DEFAULT_GOOGLE_CLIENT_ID };
   } catch {
     return { ...DEFAULTS };
   }
