@@ -6,3 +6,11 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Android APK packaging artifacts
+android-build/
+*.apk
+*.aab
+*.keystore
+*.jks
+"Skatto Schedular - Google Play package.zip"
