@@ -33,25 +33,31 @@ export default defineConfig({
     icsProxyDevPlugin(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
+      includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-192.png", "icon-maskable-512.png"],
       manifest: {
+        id: "/",
         name: "Skatto Schedular",
         short_name: "Skatto Schedular",
         description: "話す・撮るだけで予定が入る入力特化スケジュールアプリ",
         lang: "ja",
-        theme_color: "#1f2937",
-        background_color: "#0f172a",
+        theme_color: "#0c111c",
+        background_color: "#0c111c",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
+        // PNGアイコンはTWA(Android)で必須。SVGはWebでのリッチ表示用に併載。
         icons: [
-          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" },
+          { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "icon-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
         ],
       },
       workbox: {
         // アプリシェルのみプリキャッシュ。WebLLM/Tesseractの大容量チャンクは
         // オンデマンドDL（ブラウザHTTPキャッシュに委譲）し、プリキャッシュ対象外にする。
-        globPatterns: ["**/*.{css,html,svg,woff2}", "assets/index-*.js", "assets/workbox-*.js"],
+        globPatterns: ["**/*.{css,html,svg,png,woff2}", "assets/index-*.js", "assets/workbox-*.js"],
         globIgnores: ["**/webllm-*.js", "**/tesseract-*.js"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
