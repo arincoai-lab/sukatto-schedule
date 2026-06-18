@@ -45,13 +45,13 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
-        // PNGアイコンはTWA(Android)で必須。SVGはWebでのリッチ表示用に併載。
+        // TWA(Android)で必須なPNGのみ。SVGは別途<link rel="icon">で配信し
+        // manifestには載せない(PWABuilderのSVG誤検出を避けるため)。
         icons: [
           { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
           { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
           { src: "icon-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
           { src: "icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-          { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
         ],
       },
       workbox: {
