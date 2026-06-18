@@ -313,9 +313,8 @@ export default function App() {
           </div>
         )}
 
-        {viewMode === "agenda" && (
-          <TemplateBar templates={settings.templates} onPick={pickTemplate} />
-        )}
+        {/* クイック登録はリスト/カレンダーどちらの表示でも常時表示 */}
+        <TemplateBar templates={settings.templates} onPick={pickTemplate} />
 
         {!connected && (
           <div className="card" style={{ marginBottom: 16 }}>
