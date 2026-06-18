@@ -1,16 +1,28 @@
 :root {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --surface-2: #334155;
-  --border: #334155;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --accent: #38bdf8;
-  --accent-strong: #0ea5e9;
-  --danger: #f87171;
-  --ok: #34d399;
-  --warn: #fbbf24;
+  /* 背景: 上から下に深まる微細グラデーション。完全に黒くせず青みを残して上品に */
+  --bg: #0b1220;
+  --bg-grad-top: #111a2e;
+  --bg-grad-bot: #0a1020;
+  --surface: #19233a;
+  --surface-2: #232f4a;
+  --border: #2a3654;
+  --border-strong: #3a4a6e;
+  --text: #e9eefc;
+  --muted: #8da0c0;
+  --muted-2: #6e7f9d;
+  --accent: #56c6ff;
+  --accent-strong: #2aa3eb;
+  --accent-grad: linear-gradient(135deg, #5fd0ff 0%, #2aa3eb 100%);
+  --accent-soft: rgba(86, 198, 255, 0.12);
+  --danger: #ff7a7a;
+  --ok: #5cd6a3;
+  --warn: #ffc857;
   --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 22px;
+  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 6px 18px rgba(0, 0, 0, 0.35);
+  --glow-accent: 0 6px 20px rgba(86, 198, 255, 0.35);
   color-scheme: dark;
 }
 
@@ -25,11 +37,15 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(1200px 600px at 50% -100px, rgba(86, 198, 255, 0.08), transparent 60%),
+    linear-gradient(180deg, var(--bg-grad-top) 0%, var(--bg-grad-bot) 100%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP",
-    system-ui, sans-serif;
+    "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.005em;
 }
 
 #root {
@@ -51,7 +67,12 @@ body {
 .app-header h1 {
   font-size: 1.05rem;
   margin: 0;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .app-main {
@@ -81,9 +102,16 @@ body {
   max-width: 540px;
   display: flex;
   gap: 10px;
-  padding: 8px 14px;
-  padding-bottom: max(env(safe-area-inset-bottom), 10px);
-  background: linear-gradient(to top, var(--bg) 78%, transparent);
+  padding: 10px 14px;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  background: linear-gradient(
+    to top,
+    rgba(11, 18, 32, 0.95) 50%,
+    rgba(11, 18, 32, 0.7) 75%,
+    transparent
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .dock-btn {
@@ -101,54 +129,81 @@ body {
   align-items: center;
   gap: 3px;
   cursor: pointer;
-  transition: transform 0.08s ease, background 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease,
+    box-shadow 0.2s ease;
 }
 
 .dock-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
+  background: var(--surface-2);
 }
 
 .dock-btn.primary {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: var(--accent-grad);
+  border-color: transparent;
   color: #04263a;
+  box-shadow: var(--glow-accent);
 }
 
 .dock-btn .ico {
   font-size: 1.3rem;
   line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
 }
 
 .dock-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
+  box-shadow: none;
 }
 
 /* カード */
 .card {
-  background: var(--surface);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 14px 14px 13px;
   margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, transform 0.08s ease;
+}
+
+.card[role="button"]:active {
+  transform: scale(0.99);
+  border-color: var(--border-strong);
 }
 
 .card .title {
   font-weight: 700;
   font-size: 1rem;
+  letter-spacing: 0.005em;
 }
 
 .card .meta {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   margin-top: 4px;
 }
 
 .section-label {
-  color: var(--muted);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
-  margin: 8px 4px 5px;
+  color: var(--muted-2);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  margin: 10px 2px 6px;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border), transparent);
 }
 
 /* フォーム */
@@ -166,13 +221,21 @@ body {
 .field input,
 .field textarea {
   width: 100%;
-  background: var(--bg);
+  background: rgba(11, 18, 32, 0.6);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 11px 12px;
   color: var(--text);
   font-size: 1rem;
   font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .field textarea {
@@ -199,21 +262,31 @@ body {
   cursor: pointer;
   background: var(--surface-2);
   color: var(--text);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.08s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
 }
 
 .btn.primary {
-  background: var(--accent-strong);
+  background: var(--accent-grad);
   color: #04263a;
+  box-shadow: var(--glow-accent);
+  letter-spacing: 0.02em;
 }
 
 .btn.ghost {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
+  box-shadow: none;
 }
 
 .btn:disabled {
   opacity: 0.5;
+  box-shadow: none;
 }
 
 .btn-row {
@@ -230,27 +303,40 @@ body {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.7);
+  background: rgba(4, 8, 22, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: flex-end;
   z-index: 50;
+  animation: fade-in 0.18s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal {
-  background: var(--surface);
+  background:
+    radial-gradient(800px 200px at 50% -50px, rgba(86, 198, 255, 0.08), transparent),
+    linear-gradient(180deg, #1b2540 0%, #161f37 100%);
   width: 100%;
   max-width: 540px;
   margin: 0 auto;
-  border-radius: 20px 20px 0 0;
+  border-radius: 22px 22px 0 0;
+  border-top: 1px solid var(--border-strong);
   padding: 18px 16px;
   padding-bottom: max(env(safe-area-inset-bottom), 18px);
   max-height: 92dvh;
   overflow-y: auto;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modal h2 {
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   margin: 0 0 4px;
+  letter-spacing: 0.01em;
 }
 
 .badge {
@@ -262,20 +348,23 @@ body {
 }
 
 .badge.low {
-  background: rgba(251, 191, 36, 0.18);
+  background: rgba(255, 200, 87, 0.16);
   color: var(--warn);
+  border: 1px solid rgba(255, 200, 87, 0.28);
 }
 
 .badge.ok {
-  background: rgba(52, 211, 153, 0.16);
+  background: rgba(92, 214, 163, 0.14);
   color: var(--ok);
+  border: 1px solid rgba(92, 214, 163, 0.28);
 }
 
 .banner {
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 12px;
   font-size: 0.85rem;
   margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
 }
 
 .banner.warn {
@@ -326,19 +415,28 @@ body {
   border: none;
   color: var(--accent);
   font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.link-btn:hover {
+  background: var(--accent-soft);
 }
 
 /* 表示切替（リスト/カレンダー） */
 .view-toggle {
   display: flex;
-  gap: 4px;
-  background: var(--surface);
+  gap: 3px;
+  background: rgba(11, 18, 32, 0.6);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px;
-  margin: 4px 0 8px;
+  margin: 4px 0 10px;
+  box-shadow: var(--shadow-sm);
 }
 
 .view-toggle button {
@@ -346,16 +444,19 @@ body {
   border: none;
   background: transparent;
   color: var(--muted);
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: color 0.15s ease, background 0.2s ease;
+  letter-spacing: 0.02em;
 }
 
 .view-toggle button.active {
-  background: var(--accent-strong);
+  background: var(--accent-grad);
   color: #04263a;
+  box-shadow: var(--glow-accent);
 }
 
 /* 月カレンダー */
@@ -375,6 +476,13 @@ body {
   height: 36px;
   font-size: 1.2rem;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.month-nav:active {
+  transform: scale(0.94);
+  background: var(--surface-2);
 }
 
 .month-title {
@@ -383,64 +491,93 @@ body {
   color: var(--text);
   font-size: 1.05rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
 .month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  gap: 4px;
 }
 
 .month-weekdays {
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .wd {
   text-align: center;
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 0.7rem;
+  color: var(--muted-2);
   padding: 2px 0;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .wd.sun {
-  color: #f87171;
+  color: #ff8a8a;
 }
 
 .wd.sat {
-  color: #60a5fa;
+  color: #7eb4ff;
 }
 
 .day-cell {
-  min-height: 44px;
+  min-height: 46px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 2px;
-  padding: 3px 0 0;
+  gap: 3px;
+  padding: 4px 0 2px;
   color: var(--text);
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease;
+}
+
+.day-cell:active {
+  transform: scale(0.97);
 }
 
 .day-cell.dim {
-  opacity: 0.35;
+  opacity: 0.32;
+  background: transparent;
+  box-shadow: none;
 }
 
 .day-cell.today {
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft), var(--shadow-sm);
+}
+
+.day-cell.today .day-num {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .day-cell.selected {
-  background: var(--surface-2);
-  border-color: var(--accent);
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: #04263a;
+  box-shadow: var(--glow-accent);
+}
+
+.day-cell.selected .day-num {
+  color: #04263a;
+  font-weight: 700;
+}
+
+.day-cell.selected .dot {
+  background: rgba(4, 38, 58, 0.8);
 }
 
 .day-num {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .day-dots {
@@ -478,36 +615,63 @@ body {
 }
 
 .template-chip {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-height: 50px;
-  background: var(--surface);
+  min-height: 52px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+    var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 13px;
   padding: 8px 6px;
   color: var(--text);
   cursor: pointer;
-  transition: transform 0.08s ease, background 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.template-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent-grad);
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
 .template-chip:active {
-  transform: scale(0.96);
-  background: var(--surface-2);
+  transform: scale(0.95);
+  border-color: var(--border-strong);
+}
+
+.template-chip:active::before {
+  opacity: 0.1;
 }
 
 .template-chip-label {
-  font-size: 0.98rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   line-height: 1.2;
   text-align: center;
+  letter-spacing: 0.01em;
+  position: relative;
+  z-index: 1;
 }
 
 .template-chip-sub {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--muted);
+  position: relative;
+  z-index: 1;
 }
 
 /* テンプレチップ（設定画面の編集用、横並び） */
