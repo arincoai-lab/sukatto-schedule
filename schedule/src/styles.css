@@ -653,6 +653,49 @@ body {
   color: var(--muted);
 }
 
+/* マルチ選択用チェックリスト（書き込み先カレンダー） */
+.calendar-checklist {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 40px;
+  color: var(--text);
+  transition: background 0.12s ease;
+}
+
+.check-row + .check-row {
+  border-top: 1px solid var(--border);
+}
+
+.check-row:active {
+  background: var(--surface-2);
+}
+
+.check-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+}
+
+.check-row span {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
 /* ライトテーマ: 同じ構造のまま色のみ差し替え（高コントラスト・視認性重視を維持） */
 :root[data-theme="light"] {
   --bg: #f5f7fb;

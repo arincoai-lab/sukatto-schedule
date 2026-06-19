@@ -4,7 +4,8 @@ import type { EventTemplate, ThemeMode } from "../types";
 
 export interface AppSettings {
   googleClientId: string; // 公開OAuthクライアントID（秘密鍵ではない）
-  defaultCalendarId: string; // 既定の書き込み先カレンダー
+  defaultCalendarId: string; // 後方互換: 旧設定の単一書き込み先。新ロジックは writeCalendarIds を使う
+  writeCalendarIds: string[]; // Skattoから書き込む先カレンダー（複数可）。空なら[defaultCalendarId]
   defaultDurationMin: number; // 終了時刻未指定時の所要時間
   preferLLM: boolean; // WebGPU利用可能時に端末内LLMを使うか
   icsSources: IcsSource[]; // 統合閲覧する外部カレンダー(ICS購読URL)
@@ -31,6 +32,7 @@ const DEFAULT_TEMPLATES: EventTemplate[] = [
 const DEFAULTS: AppSettings = {
   googleClientId: DEFAULT_GOOGLE_CLIENT_ID,
   defaultCalendarId: "primary",
+  writeCalendarIds: ["primary"],
   defaultDurationMin: 60,
   preferLLM: true,
   icsSources: [],
@@ -45,8 +47,12 @@ export function loadSettings(): AppSettings {
     if (!raw) return { ...DEFAULTS };
     const parsed = JSON.parse(raw) as Partial<AppSettings>;
     // クライアントIDは常に正しい既定値を強制（過去にtypoで保存された誤値を自動補正）。
-    // 個人用・単一クライアントのため上書きせず固定する。
-    return { ...DEFAULTS, ...parsed, googleClientId: DEFAULT_GOOGLE_CLIENT_ID };
+    const merged: AppSettings = { ...DEFAULTS, ...parsed, googleClientId: DEFAULT_GOOGLE_CLIENT_ID };
+    // 旧設定(writeCalendarIds なし)からの移行: defaultCalendarId を初期値に。
+    if (!Array.isArray(merged.writeCalendarIds) || merged.writeCalendarIds.length === 0) {
+      merged.writeCalendarIds = [merged.defaultCalendarId || "primary"];
+    }
+    return merged;
   } catch {
     return { ...DEFAULTS };
   }

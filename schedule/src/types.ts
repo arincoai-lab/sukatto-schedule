@@ -46,4 +46,5 @@ export interface CalendarEvent {
   location?: string;
   calendarSummary?: string;
   provider: "google" | "ics"; // google=編集/削除可、ics=読み取り専用
+  calendarId?: string; // 由来カレンダーID（Google編集/削除時に必要）
 }

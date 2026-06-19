@@ -107,7 +107,7 @@ export async function deleteEvent(
   }
 }
 
-function mapGApiEvent(it: GApiEvent): CalendarEvent {
+function mapGApiEvent(it: GApiEvent, calendarId: string): CalendarEvent {
   const allDay = Boolean(it.start.date);
   return {
     id: it.id,
@@ -117,10 +117,11 @@ function mapGApiEvent(it: GApiEvent): CalendarEvent {
     allDay,
     location: it.location,
     provider: "google" as const,
+    calendarId,
   };
 }
 
-// 指定期間の予定を取得（カレンダー月表示用）
+// 指定期間の予定を取得（カレンダー月表示用）。calendarIdをイベントに刻印する。
 export async function listEventsRange(
   token: string,
   calendarId: string,
@@ -139,7 +140,7 @@ export async function listEventsRange(
     token,
     `/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
   )) as { items?: GApiEvent[] };
-  return (data.items ?? []).map(mapGApiEvent);
+  return (data.items ?? []).map((it) => mapGApiEvent(it, calendarId));
 }
 
 // 直近の予定を取得（アジェンダ表示用）
@@ -160,7 +161,7 @@ export async function listUpcoming(
     token,
     `/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
   )) as { items?: GApiEvent[] };
-  return (data.items ?? []).map(mapGApiEvent);
+  return (data.items ?? []).map((it) => mapGApiEvent(it, calendarId));
 }
 
 interface GCalListItem {

@@ -197,34 +197,44 @@ export default function SettingsPanel({ settings, token, onSave, onClose }: Prop
         </div>
 
         <div className="field">
-          <label>書き込み先カレンダー</label>
+          <label>
+            書き込み先カレンダー（複数選択可・選んだ全てに同時登録）
+          </label>
           {calendars.length > 0 ? (
-            <select
-              value={draft.defaultCalendarId}
-              onChange={(e) => setDraft({ ...draft, defaultCalendarId: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "11px 12px",
-                background: "var(--bg)",
-                color: "var(--text)",
-                border: "1px solid var(--border)",
-                borderRadius: 10,
-                fontSize: "1rem",
-              }}
-            >
-              {calendars.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.summary}
-                </option>
-              ))}
-            </select>
+            <div className="calendar-checklist">
+              {calendars.map((c) => {
+                const checked = draft.writeCalendarIds.includes(c.id);
+                return (
+                  <label key={c.id} className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const set = new Set(draft.writeCalendarIds);
+                        if (e.target.checked) set.add(c.id);
+                        else set.delete(c.id);
+                        // 0件にはしない（必ず1つは選択保持）
+                        const next = set.size > 0 ? [...set] : [c.id];
+                        setDraft({ ...draft, writeCalendarIds: next });
+                      }}
+                    />
+                    <span>{c.summary}</span>
+                  </label>
+                );
+              })}
+            </div>
           ) : (
             <input
-              value={draft.defaultCalendarId}
-              onChange={(e) => setDraft({ ...draft, defaultCalendarId: e.target.value })}
+              value={draft.writeCalendarIds[0] ?? "primary"}
+              onChange={(e) =>
+                setDraft({ ...draft, writeCalendarIds: [e.target.value || "primary"] })
+              }
               placeholder="primary"
             />
           )}
+          <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 4 }}>
+            接続後に Google から自分のカレンダー一覧を取得して表示します。
+          </div>
         </div>
 
         <div className="field">

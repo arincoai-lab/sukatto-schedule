@@ -53,6 +53,7 @@ export default function App() {
   // 既存予定の編集（Googleのみ）
   const [editing, setEditing] = useState<ParsedEvent | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
   const [editBusy, setEditBusy] = useState(false);
 
   // 作成イベントへ既定リマインダーを付与（確認UIにも反映される）
@@ -72,8 +73,22 @@ export default function App() {
       const all: CalendarEvent[] = [];
       const warns: string[] = [];
       if (token) {
-        const items = await listEventsRange(token, settings.defaultCalendarId, start, end);
-        all.push(...items.map((e) => ({ ...e, calendarSummary: e.calendarSummary ?? "Google" })));
+        // 書き込み先(複数)のすべてのGoogleカレンダーから取得
+        const gResults = await Promise.allSettled(
+          settings.writeCalendarIds.map((cid) => listEventsRange(token, cid, start, end)),
+        );
+        gResults.forEach((r, i) => {
+          if (r.status === "fulfilled") {
+            all.push(
+              ...r.value.map((e) => ({
+                ...e,
+                calendarSummary: e.calendarSummary ?? settings.writeCalendarIds[i],
+              })),
+            );
+          } else {
+            warns.push(`Googleカレンダー「${settings.writeCalendarIds[i]}」の取得に失敗`);
+          }
+        });
         setConnected(true);
       }
       const results = await Promise.allSettled(
@@ -86,7 +101,7 @@ export default function App() {
       all.sort((a, b) => a.start.localeCompare(b.start));
       return { events: all, warnings: warns };
     },
-    [settings.defaultCalendarId, settings.icsSources],
+    [settings.writeCalendarIds, settings.icsSources],
   );
 
   const refreshAgenda = useCallback(async () => {
@@ -192,18 +207,41 @@ export default function App() {
     [settings.preferLLM, settings.defaultDurationMin, withDefaultReminder],
   );
 
-  // Googleカレンダーへまとめて登録し、表示を更新
+  // Googleカレンダー(複数可)へ同時登録し、表示を更新。
+  // 1つでも書き込みに失敗したらエラー（部分成功は許容しすべて投げる）。
   const registerEvents = useCallback(
     async (events: ParsedEvent[]) => {
       const token = await ensureToken(settings.googleClientId);
+      const targets = settings.writeCalendarIds.length > 0
+        ? settings.writeCalendarIds
+        : [settings.defaultCalendarId || "primary"];
+      const failures: string[] = [];
       for (const ev of events) {
-        await insertEvent(token, settings.defaultCalendarId, ev);
+        // 各イベントを全カレンダーへ並列書き込み
+        const results = await Promise.allSettled(
+          targets.map((cid) => insertEvent(token, cid, ev)),
+        );
+        results.forEach((r, i) => {
+          if (r.status === "rejected") {
+            failures.push(`${ev.title} → ${targets[i]}: ${String(r.reason).slice(0, 80)}`);
+          }
+        });
+      }
+      if (failures.length > 0) {
+        throw new Error(`一部のカレンダーへの登録に失敗: ${failures.join("; ")}`);
       }
       setConnected(true);
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     },
-    [settings.googleClientId, settings.defaultCalendarId, refreshAgenda, refreshMonth, viewMode],
+    [
+      settings.googleClientId,
+      settings.writeCalendarIds,
+      settings.defaultCalendarId,
+      refreshAgenda,
+      refreshMonth,
+      viewMode,
+    ],
   );
 
   // 確認後 → Googleカレンダーへ登録
@@ -234,11 +272,13 @@ export default function App() {
     }
   };
 
-  // アジェンダのGoogle予定をタップ → 編集モーダルへ
+  // アジェンダのGoogle予定をタップ → 編集モーダルへ。
+  // 編集/削除は由来カレンダー(e.calendarId)に対して行う(複数書き込み対応)。
   const onSelectEvent = (e: CalendarEvent) => {
     if (e.provider !== "google") return;
     setError(null);
     setEditingId(e.id);
+    setEditingCalendarId(e.calendarId ?? settings.defaultCalendarId);
     setEditing({
       title: e.title,
       start: e.start,
@@ -252,14 +292,15 @@ export default function App() {
   };
 
   const saveEdit = async (updated: ParsedEvent) => {
-    if (!editingId) return;
+    if (!editingId || !editingCalendarId) return;
     setEditBusy(true);
     setError(null);
     try {
       const token = await ensureToken(settings.googleClientId);
-      await updateEvent(token, settings.defaultCalendarId, editingId, updated);
+      await updateEvent(token, editingCalendarId, editingId, updated);
       setEditing(null);
       setEditingId(null);
+      setEditingCalendarId(null);
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     } catch (err) {
@@ -270,14 +311,15 @@ export default function App() {
   };
 
   const deleteEditing = async () => {
-    if (!editingId) return;
+    if (!editingId || !editingCalendarId) return;
     setEditBusy(true);
     setError(null);
     try {
       const token = await ensureToken(settings.googleClientId);
-      await deleteEvent(token, settings.defaultCalendarId, editingId);
+      await deleteEvent(token, editingCalendarId, editingId);
       setEditing(null);
       setEditingId(null);
+      setEditingCalendarId(null);
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     } catch (err) {
@@ -446,6 +488,7 @@ export default function App() {
           onCancel={() => {
             setEditing(null);
             setEditingId(null);
+            setEditingCalendarId(null);
           }}
           onSave={saveEdit}
           onDelete={deleteEditing}
