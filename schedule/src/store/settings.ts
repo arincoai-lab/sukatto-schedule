@@ -1,6 +1,6 @@
 // アプリ設定の永続化（localStorage）。秘密情報は保存しない（GoogleクライアントIDは公開値）。
 import type { IcsSource } from "../calendar/ics";
-import type { EventTemplate } from "../types";
+import type { EventTemplate, ThemeMode } from "../types";
 
 export interface AppSettings {
   googleClientId: string; // 公開OAuthクライアントID（秘密鍵ではない）
@@ -10,6 +10,7 @@ export interface AppSettings {
   icsSources: IcsSource[]; // 統合閲覧する外部カレンダー(ICS購読URL)
   templates: EventTemplate[]; // よく使う予定テンプレ
   defaultReminderMin: number; // 既定の通知（分前）。0で通知なし
+  theme: ThemeMode; // 表示テーマ（light/dark/system）
 }
 
 const STORAGE_KEY = "sukatto.settings.v1";
@@ -35,6 +36,7 @@ const DEFAULTS: AppSettings = {
   icsSources: [],
   templates: DEFAULT_TEMPLATES,
   defaultReminderMin: 30,
+  theme: "system",
 };
 
 export function loadSettings(): AppSettings {

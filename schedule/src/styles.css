@@ -652,3 +652,56 @@ body {
   font-size: 0.7rem;
   color: var(--muted);
 }
+
+/* ライトテーマ: 同じ構造のまま色のみ差し替え（高コントラスト・視認性重視を維持） */
+:root[data-theme="light"] {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --border: #d9dee8;
+  --border-strong: #bcc6d5;
+
+  --text: #0f1626;
+  --muted: #5b6680;
+  --muted-2: #7e8aa3;
+
+  --accent: #1f8be3;
+  --accent-press: #1773c4;
+  --accent-soft: rgba(31, 139, 227, 0.12);
+  --on-accent: #ffffff;
+
+  --danger: #d63838;
+  --ok: #1ea974;
+  --warn: #b1700a;
+
+  color-scheme: light;
+}
+
+/* ライト時の細部調整: 半透明オーバーレイ・blur元の不透明度などを白基調に */
+:root[data-theme="light"] .input-dock {
+  background: rgba(245, 247, 251, 0.95);
+}
+
+:root[data-theme="light"] .modal-backdrop {
+  background: rgba(15, 22, 38, 0.4);
+}
+
+:root[data-theme="light"] .day-cell.selected .dot {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+:root[data-theme="light"] .wd.sun {
+  color: #d63838;
+}
+
+:root[data-theme="light"] .wd.sat {
+  color: #1773c4;
+}
+
+:root[data-theme="light"] .day-cell.today {
+  border-color: var(--accent);
+}
+
+:root[data-theme="light"] .day-cell.today .day-num {
+  color: var(--accent);
+}

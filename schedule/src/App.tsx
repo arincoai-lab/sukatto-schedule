@@ -26,6 +26,7 @@ import PhotoCapture from "./input/PhotoCapture";
 import SettingsPanel from "./SettingsPanel";
 import TemplateBar from "./templates/TemplateBar";
 import { buildEventFromTemplate } from "./templates/build";
+import { applyTheme } from "./util/theme";
 import type { EventSource, EventTemplate } from "./types";
 
 type Modal = "none" | "voice" | "photo" | "quick" | "settings";
@@ -132,6 +133,9 @@ export default function App() {
     if (hasValidToken()) setConnected(true);
     if (hasValidToken() || settings.icsSources.length > 0) void refreshAgenda();
   }, [refreshAgenda, settings.icsSources.length]);
+
+  // テーマ適用（light/dark/system）。system時は端末設定の変化も追従
+  useEffect(() => applyTheme(settings.theme), [settings.theme]);
 
   // 月表示の時は表示月に応じて取得
   useEffect(() => {

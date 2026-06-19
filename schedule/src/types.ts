@@ -1,6 +1,9 @@
 // 入力ソース種別
 export type EventSource = "voice" | "photo" | "manual";
 
+// アプリのテーマモード（system は端末設定に追従）
+export type ThemeMode = "light" | "dark" | "system";
+
 // 解析結果として確認UIに渡す構造化イベント
 export interface ParsedEvent {
   title: string;

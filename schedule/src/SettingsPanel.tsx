@@ -256,6 +256,30 @@ export default function SettingsPanel({ settings, token, onSave, onClose }: Prop
         </div>
 
         <div className="field">
+          <label>テーマ</label>
+          <div className="view-toggle" style={{ margin: 0 }}>
+            <button
+              className={draft.theme === "light" ? "active" : ""}
+              onClick={() => setDraft({ ...draft, theme: "light" })}
+            >
+              ライト
+            </button>
+            <button
+              className={draft.theme === "dark" ? "active" : ""}
+              onClick={() => setDraft({ ...draft, theme: "dark" })}
+            >
+              ダーク
+            </button>
+            <button
+              className={draft.theme === "system" ? "active" : ""}
+              onClick={() => setDraft({ ...draft, theme: "system" })}
+            >
+              端末設定
+            </button>
+          </div>
+        </div>
+
+        <div className="field">
           <label>
             <input
               type="checkbox"
