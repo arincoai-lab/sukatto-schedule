@@ -4,6 +4,7 @@ import type { IcsSource } from "./calendar/ics";
 import type { EventTemplate } from "./types";
 import { isWebGpuAvailable } from "./parse";
 import { listCalendars } from "./calendar/google-events";
+import { listOutlookCalendars } from "./calendar/outlook-events";
 
 // 設定パネル: GoogleクライアントID（公開値）、書き込み先カレンダー、既定所要時間、
 // 既定の通知、LLM利用可否、外部カレンダー(ICS購読)、よく使う予定テンプレ。
@@ -21,6 +22,7 @@ const selectStyle: React.CSSProperties = {
 interface Props {
   settings: AppSettings;
   token: string | null;
+  outlookToken: string | null;
   onSave: (s: AppSettings) => void;
   onClose: () => void;
 }
@@ -170,9 +172,18 @@ function TemplatesEditor({
   );
 }
 
-export default function SettingsPanel({ settings, token, onSave, onClose }: Props) {
+export default function SettingsPanel({
+  settings,
+  token,
+  outlookToken,
+  onSave,
+  onClose,
+}: Props) {
   const [draft, setDraft] = useState<AppSettings>(settings);
   const [calendars, setCalendars] = useState<{ id: string; summary: string }[]>([]);
+  const [outlookCalendars, setOutlookCalendars] = useState<{ id: string; summary: string }[]>(
+    [],
+  );
   const webgpu = isWebGpuAvailable();
 
   useEffect(() => {
@@ -181,6 +192,13 @@ export default function SettingsPanel({ settings, token, onSave, onClose }: Prop
       .then((list) => setCalendars(list.map((c) => ({ id: c.id, summary: c.summary }))))
       .catch(() => setCalendars([]));
   }, [token]);
+
+  useEffect(() => {
+    if (!outlookToken) return;
+    listOutlookCalendars(outlookToken)
+      .then((list) => setOutlookCalendars(list.map((c) => ({ id: c.id, summary: c.summary }))))
+      .catch(() => setOutlookCalendars([]));
+  }, [outlookToken]);
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -236,6 +254,46 @@ export default function SettingsPanel({ settings, token, onSave, onClose }: Prop
             接続後に Google から自分のカレンダー一覧を取得して表示します。
           </div>
         </div>
+
+        <div className="section-label">Outlook(Microsoft 365) 連携 — 任意</div>
+
+        <div className="field">
+          <label>Microsoft OAuth クライアントID（Azure に登録したアプリのID）</label>
+          <input
+            value={draft.outlookClientId}
+            onChange={(e) => setDraft({ ...draft, outlookClientId: e.target.value })}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          />
+          <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 4 }}>
+            設定すると「Outlookに接続」ボタンが現れます。Azure App登録手順はREADME参照。
+          </div>
+        </div>
+
+        {outlookCalendars.length > 0 && (
+          <div className="field">
+            <label>Outlook 書き込み先カレンダー（複数選択可・全てに同時登録）</label>
+            <div className="calendar-checklist">
+              {outlookCalendars.map((c) => {
+                const checked = draft.outlookWriteCalendarIds.includes(c.id);
+                return (
+                  <label key={c.id} className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const set = new Set(draft.outlookWriteCalendarIds);
+                        if (e.target.checked) set.add(c.id);
+                        else set.delete(c.id);
+                        setDraft({ ...draft, outlookWriteCalendarIds: [...set] });
+                      }}
+                    />
+                    <span>{c.summary}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="field">
           <label>既定の所要時間（分）</label>

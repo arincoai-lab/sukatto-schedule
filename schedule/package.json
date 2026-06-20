@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.14.0",
     "chrono-node": "^2.7.7",
     "ical.js": "^2.2.1",
     "react": "^18.3.1",

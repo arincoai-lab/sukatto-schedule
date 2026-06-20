@@ -4,35 +4,46 @@
  */
 
 :root {
-  /* ベース: 純粋なダーク、グラデなし */
-  --bg: #0c111c;
-  --surface: #161c2a;
-  --surface-2: #1f2839;
-  --border: #2a334a;
-  --border-strong: #3a4561;
+  /* ベース: 深いネイビー。背景はbodyでグラデを当てる */
+  --bg: #060a18;
+  --bg-top: #0c1430;
+  --bg-bot: #04060f;
 
-  /* テキストはコントラスト重視 */
+  /* グラスの素材色（半透明白＋ぼかし） */
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-strong: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* 元の面色も残す(モーダル内などblurが効かない局所で使用) */
+  --surface: #131a2e;
+  --surface-2: #1c2542;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  /* テキスト */
   --text: #f3f5fb;
-  --muted: #a4afc4;
-  --muted-2: #7d8aa3;
+  --muted: #a8b3cc;
+  --muted-2: #7e8aa6;
 
-  /* アクセント: 単色で明快に */
-  --accent: #4dabff;
-  --accent-press: #2b8eea;
-  --accent-soft: rgba(77, 171, 255, 0.16);
+  /* アクセント */
+  --accent: #6cc1ff;
+  --accent-press: #3a9eea;
+  --accent-soft: rgba(108, 193, 255, 0.18);
   --on-accent: #061226;
 
-  /* 機能色 */
+  /* 光のリング(今日/選択日強調) */
+  --ring: 0 0 0 1px rgba(108, 193, 255, 0.55), 0 0 16px rgba(108, 193, 255, 0.35);
+  --ring-strong: 0 0 0 1px rgba(108, 193, 255, 0.85), 0 0 22px rgba(108, 193, 255, 0.5);
+
   --danger: #ff7a7a;
   --ok: #5cd6a3;
   --warn: #ffc857;
 
-  /* 形状 */
-  --radius-sm: 10px;
-  --radius: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 22px;
 
-  /* タップ最低サイズ(モバイルUX) */
   --tap: 44px;
 
   color-scheme: dark;
@@ -49,7 +60,12 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(900px 600px at 50% -120px, rgba(108, 193, 255, 0.12), transparent 60%),
+    radial-gradient(700px 500px at 100% 110%, rgba(94, 75, 255, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 100%);
+  background-color: var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP",
     "Inter", system-ui, sans-serif;
@@ -98,7 +114,7 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* 入力ドック: ボトムバー。フラットだがbg blurで読みやすく */
+/* 入力ドック: 半透明ベース＋blur で背景が透ける */
 .input-dock {
   position: fixed;
   bottom: 0;
@@ -108,19 +124,25 @@ body {
   max-width: 540px;
   display: flex;
   gap: 8px;
-  padding: 8px 12px;
-  padding-bottom: max(env(safe-area-inset-bottom), 10px);
-  background: rgba(12, 17, 28, 0.92);
-  border-top: 1px solid var(--border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  padding: 10px 12px;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  background: linear-gradient(
+    to top,
+    rgba(6, 10, 24, 0.85) 60%,
+    rgba(6, 10, 24, 0.5) 90%,
+    transparent
+  );
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
 }
 
+/* グラスモーフィズム ベース */
 .dock-btn {
   flex: 1;
   min-height: var(--tap);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
   border-radius: var(--radius);
   padding: 8px 6px;
   font-size: 0.85rem;
@@ -130,23 +152,32 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   cursor: pointer;
-  transition: background 0.12s ease;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: background 0.12s ease, transform 0.08s ease, border-color 0.12s ease;
 }
 
 .dock-btn:active {
-  background: var(--surface-2);
+  background: var(--glass-strong);
+  transform: scale(0.97);
 }
 
 .dock-btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(108, 193, 255, 0.95), rgba(58, 158, 234, 0.95));
+  border-color: rgba(255, 255, 255, 0.25);
   color: var(--on-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 6px 18px rgba(108, 193, 255, 0.35);
 }
 
 .dock-btn.primary:active {
-  background: var(--accent-press);
+  filter: brightness(0.92);
 }
 
 .dock-btn .ico {
@@ -158,14 +189,19 @@ body {
   opacity: 0.4;
 }
 
-/* カード: フラット。情報を見やすく */
+/* カード: グラスっぽい半透明。背景のグラデが透ける */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 14px;
   margin-bottom: 8px;
-  transition: background 0.12s ease;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .card[role="button"] {
@@ -173,7 +209,8 @@ body {
 }
 
 .card[role="button"]:active {
-  background: var(--surface-2);
+  background: var(--glass-strong);
+  border-color: var(--glass-border-strong);
 }
 
 .card .title {
@@ -249,38 +286,49 @@ body {
   flex: 1;
 }
 
-/* 汎用ボタン */
+/* 汎用ボタン: グラス */
 .btn {
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  background: var(--surface-2);
+  background: var(--glass);
   color: var(--text);
   min-height: var(--tap);
-  transition: background 0.12s ease;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: background 0.12s ease, transform 0.08s ease;
 }
 
 .btn:active {
-  background: var(--surface);
+  background: var(--glass-strong);
+  transform: scale(0.98);
 }
 
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(108, 193, 255, 0.95), rgba(58, 158, 234, 0.95));
+  border-color: rgba(255, 255, 255, 0.25);
   color: var(--on-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 6px 18px rgba(108, 193, 255, 0.35);
 }
 
 .btn.primary:active {
-  background: var(--accent-press);
+  filter: brightness(0.92);
 }
 
 .btn.ghost {
   background: transparent;
-  border-color: var(--border);
+  border-color: var(--glass-border);
   color: var(--muted);
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .btn:disabled {
@@ -298,27 +346,38 @@ body {
   flex: 1;
 }
 
-/* モーダル: 単純なシート */
+/* モーダル: backdropはぼかし、シート自体は不透明で読みやすさ確保 */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(4, 8, 22, 0.55);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
   display: flex;
   align-items: flex-end;
   z-index: 50;
+  animation: fade-in 0.18s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal {
-  background: var(--surface);
+  background:
+    radial-gradient(700px 200px at 50% -60px, rgba(108, 193, 255, 0.08), transparent),
+    linear-gradient(180deg, #1a2342 0%, #131a31 100%);
   width: 100%;
   max-width: 540px;
   margin: 0 auto;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border-strong);
   padding: 16px;
   padding-bottom: max(env(safe-area-inset-bottom), 16px);
   max-height: 92dvh;
   overflow-y: auto;
+  box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.5);
 }
 
 .modal h2 {
@@ -410,15 +469,17 @@ body {
   min-height: 32px;
 }
 
-/* 表示切替（リスト/カレンダー）: タブ風で明確 */
+/* 表示切替（リスト/カレンダー）: グラスのピル */
 .view-toggle {
   display: flex;
   gap: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 3px;
   margin: 4px 0 10px;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
 }
 
 .view-toggle button {
@@ -427,17 +488,20 @@ body {
   background: transparent;
   color: var(--muted);
   padding: 8px 10px;
-  border-radius: 7px;
+  border-radius: 9px;
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   min-height: 36px;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.15s ease;
 }
 
 .view-toggle button.active {
-  background: var(--accent);
+  background: linear-gradient(135deg, rgba(108, 193, 255, 0.95), rgba(58, 158, 234, 0.95));
   color: var(--on-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 4px 14px rgba(108, 193, 255, 0.32);
 }
 
 /* 月カレンダー */
@@ -449,18 +513,23 @@ body {
 }
 
 .month-nav {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   color: var(--text);
   border-radius: var(--radius-sm);
   width: var(--tap);
   height: 38px;
   font-size: 1.2rem;
   cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: background 0.12s ease, transform 0.08s ease;
 }
 
 .month-nav:active {
-  background: var(--surface-2);
+  background: var(--glass-strong);
+  transform: scale(0.94);
 }
 
 .month-title {
@@ -506,8 +575,8 @@ body {
 
 .day-cell {
   min-height: 50px;
-  background: transparent;
-  border: 1px solid var(--border);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
@@ -517,19 +586,25 @@ body {
   padding: 5px 0 3px;
   color: var(--text);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
 }
 
 .day-cell:active {
-  background: var(--surface);
+  background: var(--glass-strong);
 }
 
 .day-cell.dim {
-  opacity: 0.32;
+  opacity: 0.28;
+  background: transparent;
+  border-color: transparent;
 }
 
+/* 今日: 控えめな光のリング */
 .day-cell.today {
-  border-color: var(--accent);
+  border-color: rgba(108, 193, 255, 0.5);
+  box-shadow: var(--ring);
 }
 
 .day-cell.today .day-num {
@@ -537,19 +612,20 @@ body {
   font-weight: 700;
 }
 
+/* 選択日: より強い光のリング（中身は控えめにグラス強調） */
 .day-cell.selected {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
+  background: rgba(108, 193, 255, 0.18);
+  border-color: rgba(108, 193, 255, 0.85);
+  box-shadow: var(--ring-strong);
 }
 
 .day-cell.selected .day-num {
-  color: var(--on-accent);
+  color: var(--text);
   font-weight: 700;
 }
 
 .day-cell.selected .dot {
-  background: rgba(6, 18, 38, 0.8);
+  background: var(--text);
 }
 
 .day-num {
@@ -599,18 +675,24 @@ body {
   justify-content: center;
   gap: 2px;
   min-height: 56px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 8px 6px;
   color: var(--text);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
 }
 
 .template-chip:active {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
+  background: var(--glass-strong);
+  border-color: var(--glass-border-strong);
+  transform: scale(0.96);
 }
 
 .template-chip-label {

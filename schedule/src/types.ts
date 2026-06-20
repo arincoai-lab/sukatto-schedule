@@ -45,6 +45,6 @@ export interface CalendarEvent {
   allDay: boolean;
   location?: string;
   calendarSummary?: string;
-  provider: "google" | "ics"; // google=編集/削除可、ics=読み取り専用
-  calendarId?: string; // 由来カレンダーID（Google編集/削除時に必要）
+  provider: "google" | "outlook" | "ics"; // google/outlook=編集/削除可、ics=読み取り専用
+  calendarId?: string; // 由来カレンダーID（Google/Outlook編集/削除時に必要）
 }

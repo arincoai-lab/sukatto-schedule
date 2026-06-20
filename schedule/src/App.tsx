@@ -15,6 +15,19 @@ import {
   updateEvent,
   deleteEvent,
 } from "./calendar/google-events";
+import {
+  ensureOutlookToken,
+  getOutlookAccessToken,
+  hasOutlookValidToken,
+  requestOutlookToken,
+  outlookSignOut,
+} from "./calendar/outlook-auth";
+import {
+  insertOutlookEvent,
+  listOutlookEventsRange,
+  updateOutlookEvent,
+  deleteOutlookEvent,
+} from "./calendar/outlook-events";
 import { fetchIcsSource } from "./calendar/ics";
 import AgendaView from "./calendar/AgendaView";
 import MonthView from "./calendar/MonthView";
@@ -34,6 +47,7 @@ type Modal = "none" | "voice" | "photo" | "quick" | "settings";
 export default function App() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [connected, setConnected] = useState(false);
+  const [outlookConnected, setOutlookConnected] = useState(false);
   const [agenda, setAgenda] = useState<CalendarEvent[]>([]);
   const [loadingAgenda, setLoadingAgenda] = useState(false);
   const [icsWarnings, setIcsWarnings] = useState<string[]>([]);
@@ -50,10 +64,11 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 既存予定の編集（Googleのみ）
+  // 既存予定の編集（Google / Outlook）
   const [editing, setEditing] = useState<ParsedEvent | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
+  const [editingProvider, setEditingProvider] = useState<"google" | "outlook" | null>(null);
   const [editBusy, setEditBusy] = useState(false);
 
   // 作成イベントへ既定リマインダーを付与（確認UIにも反映される）
@@ -70,6 +85,7 @@ export default function App() {
   const loadRange = useCallback(
     async (start: Date, end: Date) => {
       const token = getAccessToken();
+      const oToken = getOutlookAccessToken();
       const all: CalendarEvent[] = [];
       const warns: string[] = [];
       if (token) {
@@ -91,6 +107,27 @@ export default function App() {
         });
         setConnected(true);
       }
+      // Outlook 側も並列取得
+      if (oToken && settings.outlookWriteCalendarIds.length > 0) {
+        const oResults = await Promise.allSettled(
+          settings.outlookWriteCalendarIds.map((cid) =>
+            listOutlookEventsRange(oToken, cid, start, end),
+          ),
+        );
+        oResults.forEach((r, i) => {
+          if (r.status === "fulfilled") {
+            all.push(
+              ...r.value.map((e) => ({
+                ...e,
+                calendarSummary: e.calendarSummary ?? "Outlook",
+              })),
+            );
+          } else {
+            warns.push(`Outlookカレンダー「${settings.outlookWriteCalendarIds[i]}」の取得に失敗`);
+          }
+        });
+        setOutlookConnected(true);
+      }
       const results = await Promise.allSettled(
         settings.icsSources.map((s) => fetchIcsSource(s, start, end)),
       );
@@ -101,7 +138,11 @@ export default function App() {
       all.sort((a, b) => a.start.localeCompare(b.start));
       return { events: all, warnings: warns };
     },
-    [settings.writeCalendarIds, settings.icsSources],
+    [
+      settings.writeCalendarIds,
+      settings.outlookWriteCalendarIds,
+      settings.icsSources,
+    ],
   );
 
   const refreshAgenda = useCallback(async () => {
@@ -146,7 +187,13 @@ export default function App() {
 
   useEffect(() => {
     if (hasValidToken()) setConnected(true);
-    if (hasValidToken() || settings.icsSources.length > 0) void refreshAgenda();
+    if (hasOutlookValidToken()) setOutlookConnected(true);
+    if (
+      hasValidToken() ||
+      hasOutlookValidToken() ||
+      settings.icsSources.length > 0
+    )
+      void refreshAgenda();
   }, [refreshAgenda, settings.icsSources.length]);
 
   // テーマ適用（light/dark/system）。system時は端末設定の変化も追従
@@ -172,6 +219,23 @@ export default function App() {
       if (viewMode === "month") await refreshMonth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google接続に失敗しました");
+    }
+  };
+
+  const connectOutlook = async () => {
+    setError(null);
+    if (!settings.outlookClientId) {
+      setModal("settings");
+      setError("先にMicrosoft クライアントIDを設定してください。");
+      return;
+    }
+    try {
+      await requestOutlookToken(settings.outlookClientId);
+      setOutlookConnected(true);
+      await refreshAgenda();
+      if (viewMode === "month") await refreshMonth();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Outlook接続に失敗しました");
     }
   };
 
@@ -207,30 +271,43 @@ export default function App() {
     [settings.preferLLM, settings.defaultDurationMin, withDefaultReminder],
   );
 
-  // Googleカレンダー(複数可)へ同時登録し、表示を更新。
-  // 1つでも書き込みに失敗したらエラー（部分成功は許容しすべて投げる）。
+  // Google + Outlook の選択カレンダー全てへ同時登録し、表示を更新。
+  // 1つでも失敗があれば集約してエラーとして投げる（成功分はGoogle/Outlookに残る）。
   const registerEvents = useCallback(
     async (events: ParsedEvent[]) => {
-      const token = await ensureToken(settings.googleClientId);
-      const targets = settings.writeCalendarIds.length > 0
+      const gTargets = settings.writeCalendarIds.length > 0
         ? settings.writeCalendarIds
         : [settings.defaultCalendarId || "primary"];
+      const oTargets = settings.outlookWriteCalendarIds;
+      const wantOutlook = oTargets.length > 0 && settings.outlookClientId;
+
+      const gToken = await ensureToken(settings.googleClientId);
+      const oToken = wantOutlook
+        ? await ensureOutlookToken(settings.outlookClientId)
+        : null;
+
       const failures: string[] = [];
       for (const ev of events) {
-        // 各イベントを全カレンダーへ並列書き込み
-        const results = await Promise.allSettled(
-          targets.map((cid) => insertEvent(token, cid, ev)),
-        );
+        const ops: Promise<unknown>[] = [
+          ...gTargets.map((cid) => insertEvent(gToken, cid, ev)),
+          ...(oToken ? oTargets.map((cid) => insertOutlookEvent(oToken, cid, ev)) : []),
+        ];
+        const labels = [
+          ...gTargets.map((c) => `Google:${c}`),
+          ...(oToken ? oTargets.map((c) => `Outlook:${c.slice(0, 8)}`) : []),
+        ];
+        const results = await Promise.allSettled(ops);
         results.forEach((r, i) => {
           if (r.status === "rejected") {
-            failures.push(`${ev.title} → ${targets[i]}: ${String(r.reason).slice(0, 80)}`);
+            failures.push(`${ev.title} → ${labels[i]}: ${String(r.reason).slice(0, 80)}`);
           }
         });
       }
       if (failures.length > 0) {
-        throw new Error(`一部のカレンダーへの登録に失敗: ${failures.join("; ")}`);
+        throw new Error(`一部のカレンダー登録に失敗: ${failures.join("; ")}`);
       }
       setConnected(true);
+      if (wantOutlook) setOutlookConnected(true);
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     },
@@ -238,6 +315,8 @@ export default function App() {
       settings.googleClientId,
       settings.writeCalendarIds,
       settings.defaultCalendarId,
+      settings.outlookClientId,
+      settings.outlookWriteCalendarIds,
       refreshAgenda,
       refreshMonth,
       viewMode,
@@ -272,13 +351,14 @@ export default function App() {
     }
   };
 
-  // アジェンダのGoogle予定をタップ → 編集モーダルへ。
-  // 編集/削除は由来カレンダー(e.calendarId)に対して行う(複数書き込み対応)。
+  // アジェンダの予定をタップ → 編集モーダルへ。Google/Outlookのみ編集可。
+  // 編集/削除は由来カレンダー(e.calendarId)とprovider別のAPIへルーティング。
   const onSelectEvent = (e: CalendarEvent) => {
-    if (e.provider !== "google") return;
+    if (e.provider !== "google" && e.provider !== "outlook") return;
     setError(null);
     setEditingId(e.id);
     setEditingCalendarId(e.calendarId ?? settings.defaultCalendarId);
+    setEditingProvider(e.provider);
     setEditing({
       title: e.title,
       start: e.start,
@@ -291,16 +371,26 @@ export default function App() {
     });
   };
 
+  const clearEditState = () => {
+    setEditing(null);
+    setEditingId(null);
+    setEditingCalendarId(null);
+    setEditingProvider(null);
+  };
+
   const saveEdit = async (updated: ParsedEvent) => {
-    if (!editingId || !editingCalendarId) return;
+    if (!editingId || !editingCalendarId || !editingProvider) return;
     setEditBusy(true);
     setError(null);
     try {
-      const token = await ensureToken(settings.googleClientId);
-      await updateEvent(token, editingCalendarId, editingId, updated);
-      setEditing(null);
-      setEditingId(null);
-      setEditingCalendarId(null);
+      if (editingProvider === "google") {
+        const token = await ensureToken(settings.googleClientId);
+        await updateEvent(token, editingCalendarId, editingId, updated);
+      } else {
+        const token = await ensureOutlookToken(settings.outlookClientId);
+        await updateOutlookEvent(token, editingCalendarId, editingId, updated);
+      }
+      clearEditState();
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     } catch (err) {
@@ -311,15 +401,18 @@ export default function App() {
   };
 
   const deleteEditing = async () => {
-    if (!editingId || !editingCalendarId) return;
+    if (!editingId || !editingCalendarId || !editingProvider) return;
     setEditBusy(true);
     setError(null);
     try {
-      const token = await ensureToken(settings.googleClientId);
-      await deleteEvent(token, editingCalendarId, editingId);
-      setEditing(null);
-      setEditingId(null);
-      setEditingCalendarId(null);
+      if (editingProvider === "google") {
+        const token = await ensureToken(settings.googleClientId);
+        await deleteEvent(token, editingCalendarId, editingId);
+      } else {
+        const token = await ensureOutlookToken(settings.outlookClientId);
+        await deleteOutlookEvent(token, editingCalendarId, editingId);
+      }
+      clearEditState();
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     } catch (err) {
@@ -363,30 +456,56 @@ export default function App() {
         <TemplateBar templates={settings.templates} onPick={pickTemplate} />
 
         {!connected && (
-          <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card" style={{ marginBottom: 12 }}>
             <div className="title">Googleカレンダーに接続</div>
             <div className="meta" style={{ marginBottom: 12 }}>
               予定の保存先です。接続すると直近の予定も表示されます。
             </div>
             <button className="btn primary" onClick={connect} style={{ width: "100%" }}>
-              接続する
+              Googleに接続
             </button>
           </div>
         )}
 
-        {connected && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
-            <button
-              className="link-btn"
-              onClick={() => {
-                signOut();
-                setConnected(false);
-                setAgenda([]);
-                setMonthEvents([]);
-              }}
-            >
-              切断
+        {settings.outlookClientId && !outlookConnected && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div className="title">Outlookカレンダーに接続</div>
+            <div className="meta" style={{ marginBottom: 12 }}>
+              仕事用カレンダー(Microsoft 365)にも同時登録できます。
+            </div>
+            <button className="btn primary" onClick={connectOutlook} style={{ width: "100%" }}>
+              Outlookに接続
             </button>
+          </div>
+        )}
+
+        {(connected || outlookConnected) && (
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 4 }}>
+            {connected && (
+              <button
+                className="link-btn"
+                onClick={() => {
+                  signOut();
+                  setConnected(false);
+                  setAgenda([]);
+                  setMonthEvents([]);
+                }}
+              >
+                Google切断
+              </button>
+            )}
+            {outlookConnected && (
+              <button
+                className="link-btn"
+                onClick={() => {
+                  outlookSignOut();
+                  setOutlookConnected(false);
+                  void refreshAgenda();
+                }}
+              >
+                Outlook切断
+              </button>
+            )}
           </div>
         )}
 
@@ -466,6 +585,7 @@ export default function App() {
         <SettingsPanel
           settings={settings}
           token={getAccessToken()}
+          outlookToken={getOutlookAccessToken()}
           onSave={onSaveSettings}
           onClose={() => setModal("none")}
         />
@@ -485,11 +605,7 @@ export default function App() {
         <EventEdit
           event={editing}
           busy={editBusy}
-          onCancel={() => {
-            setEditing(null);
-            setEditingId(null);
-            setEditingCalendarId(null);
-          }}
+          onCancel={clearEditState}
           onSave={saveEdit}
           onDelete={deleteEditing}
         />

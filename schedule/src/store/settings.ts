@@ -12,6 +12,8 @@ export interface AppSettings {
   templates: EventTemplate[]; // よく使う予定テンプレ
   defaultReminderMin: number; // 既定の通知（分前）。0で通知なし
   theme: ThemeMode; // 表示テーマ（light/dark/system）
+  outlookClientId: string; // Microsoft Azureに登録したアプリのクライアントID（公開値）
+  outlookWriteCalendarIds: string[]; // Outlook側の書き込み先カレンダー(複数可)
 }
 
 const STORAGE_KEY = "sukatto.settings.v1";
@@ -39,6 +41,8 @@ const DEFAULTS: AppSettings = {
   templates: DEFAULT_TEMPLATES,
   defaultReminderMin: 30,
   theme: "system",
+  outlookClientId: "",
+  outlookWriteCalendarIds: [],
 };
 
 export function loadSettings(): AppSettings {

@@ -5,7 +5,7 @@ import type { ThemeMode } from "../types";
 // 戻り値の関数を呼ぶとリスナーを解除できる（useEffect のクリーンアップ用）。
 
 const THEME_COLOR_LIGHT = "#f5f7fb";
-const THEME_COLOR_DARK = "#0c111c";
+const THEME_COLOR_DARK = "#060a18";
 
 function effectiveTheme(mode: ThemeMode): "light" | "dark" {
   if (mode === "system") {
