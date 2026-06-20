@@ -778,22 +778,35 @@ body {
   font-size: 0.95rem;
 }
 
-/* ライトテーマ: 同じ構造のまま色のみ差し替え（高コントラスト・視認性重視を維持） */
+/* ライトテーマ: 同じ構造のまま色のみ差し替え（高コントラスト・視認性重視を維持）。
+ * 背景グラデ変数・グラス変数・リングまで含めて上書きし、全体が明るく見えるようにする。 */
 :root[data-theme="light"] {
-  --bg: #f5f7fb;
+  --bg: #eef1f8;
+  --bg-top: #f8fafe;
+  --bg-bot: #e6ebf5;
+
+  /* グラスは「白の上に薄い黒ティント」で半透明パネルとして機能させる */
+  --glass: rgba(17, 26, 48, 0.035);
+  --glass-strong: rgba(17, 26, 48, 0.07);
+  --glass-border: rgba(17, 26, 48, 0.1);
+  --glass-border-strong: rgba(17, 26, 48, 0.2);
+
   --surface: #ffffff;
   --surface-2: #eef1f7;
-  --border: #d9dee8;
-  --border-strong: #bcc6d5;
+  --border: rgba(17, 26, 48, 0.1);
+  --border-strong: rgba(17, 26, 48, 0.22);
 
   --text: #0f1626;
-  --muted: #5b6680;
-  --muted-2: #7e8aa3;
+  --muted: #51607c;
+  --muted-2: #74809a;
 
   --accent: #1f8be3;
   --accent-press: #1773c4;
   --accent-soft: rgba(31, 139, 227, 0.12);
   --on-accent: #ffffff;
+
+  --ring: 0 0 0 1px rgba(31, 139, 227, 0.5), 0 0 14px rgba(31, 139, 227, 0.25);
+  --ring-strong: 0 0 0 1px rgba(31, 139, 227, 0.85), 0 0 18px rgba(31, 139, 227, 0.4);
 
   --danger: #d63838;
   --ok: #1ea974;
@@ -802,17 +815,38 @@ body {
   color-scheme: light;
 }
 
-/* ライト時の細部調整: 半透明オーバーレイ・blur元の不透明度などを白基調に */
+/* ライト時の背景: ハローを控えめにし、明るいグラデへ */
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(900px 600px at 50% -140px, rgba(31, 139, 227, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 100%);
+  background-color: var(--bg);
+}
+
+/* ライト時の入力ドック: 明るい半透明 */
 :root[data-theme="light"] .input-dock {
-  background: rgba(245, 247, 251, 0.95);
+  background: linear-gradient(
+    to top,
+    rgba(238, 241, 248, 0.9) 60%,
+    rgba(238, 241, 248, 0.5) 90%,
+    transparent
+  );
+}
+
+/* ライト時のモーダル: 明るい面に */
+:root[data-theme="light"] .modal {
+  background:
+    radial-gradient(700px 200px at 50% -60px, rgba(31, 139, 227, 0.07), transparent),
+    #ffffff;
 }
 
 :root[data-theme="light"] .modal-backdrop {
-  background: rgba(15, 22, 38, 0.4);
+  background: rgba(15, 22, 38, 0.35);
 }
 
-:root[data-theme="light"] .day-cell.selected .dot {
-  background: rgba(255, 255, 255, 0.9);
+/* 選択日のドットは本文色(濃色)で見えるように */
+:root[data-theme="light"] .day-cell.selected {
+  background: rgba(31, 139, 227, 0.14);
 }
 
 :root[data-theme="light"] .wd.sun {
@@ -821,12 +855,4 @@ body {
 
 :root[data-theme="light"] .wd.sat {
   color: #1773c4;
-}
-
-:root[data-theme="light"] .day-cell.today {
-  border-color: var(--accent);
-}
-
-:root[data-theme="light"] .day-cell.today .day-num {
-  color: var(--accent);
 }

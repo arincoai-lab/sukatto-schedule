@@ -180,6 +180,7 @@ export default function SettingsPanel({
   onClose,
 }: Props) {
   const [draft, setDraft] = useState<AppSettings>(settings);
+  const [tab, setTab] = useState<"calendars" | "input" | "display">("calendars");
   const [calendars, setCalendars] = useState<{ id: string; summary: string }[]>([]);
   const [outlookCalendars, setOutlookCalendars] = useState<{ id: string; summary: string }[]>(
     [],
@@ -205,6 +206,26 @@ export default function SettingsPanel({
       <div className="modal">
         <h2>設定</h2>
 
+        <div className="view-toggle" style={{ marginTop: 0 }}>
+          <button
+            className={tab === "calendars" ? "active" : ""}
+            onClick={() => setTab("calendars")}
+          >
+            連携
+          </button>
+          <button className={tab === "input" ? "active" : ""} onClick={() => setTab("input")}>
+            入力
+          </button>
+          <button
+            className={tab === "display" ? "active" : ""}
+            onClick={() => setTab("display")}
+          >
+            表示
+          </button>
+        </div>
+
+        {tab === "calendars" && (
+        <>
         <div className="field">
           <label>Google OAuth クライアントID（公開値・秘密鍵ではありません）</label>
           <input
@@ -295,7 +316,26 @@ export default function SettingsPanel({
           </div>
         )}
 
-        <div className="field">
+        <div className="section-label">統合閲覧する外部カレンダー（ICS購読）</div>
+        <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 10px" }}>
+          Outlook/TimeTree等の「公開URL(.ics)」を貼ると、ここで予定を閲覧できます（読み取り専用）。
+        </p>
+        <IcsSourcesEditor
+          sources={draft.icsSources}
+          onChange={(icsSources) => setDraft({ ...draft, icsSources })}
+        />
+        </>
+        )}
+
+        {tab === "input" && (
+        <>
+        <div className="section-label">よく使う予定テンプレ</div>
+        <TemplatesEditor
+          templates={draft.templates}
+          onChange={(templates) => setDraft({ ...draft, templates })}
+        />
+
+        <div className="field" style={{ marginTop: 14 }}>
           <label>既定の所要時間（分）</label>
           <input
             type="number"
@@ -324,6 +364,27 @@ export default function SettingsPanel({
         </div>
 
         <div className="field">
+          <label>
+            <input
+              type="checkbox"
+              checked={draft.preferLLM}
+              disabled={!webgpu}
+              onChange={(e) => setDraft({ ...draft, preferLLM: e.target.checked })}
+              style={{ width: "auto", marginRight: 6 }}
+            />
+            端末内AI（WebLLM）で高精度解析を使う
+          </label>
+          {!webgpu && (
+            <div className="banner warn" style={{ marginTop: 8 }}>
+              この端末はWebGPU非対応のため、簡易解析（ルールベース）で動作します。
+            </div>
+          )}
+        </div>
+        </>
+        )}
+
+        {tab === "display" && (
+        <div className="field">
           <label>テーマ</label>
           <div className="view-toggle" style={{ margin: 0 }}>
             <button
@@ -346,41 +407,9 @@ export default function SettingsPanel({
             </button>
           </div>
         </div>
+        )}
 
-        <div className="field">
-          <label>
-            <input
-              type="checkbox"
-              checked={draft.preferLLM}
-              disabled={!webgpu}
-              onChange={(e) => setDraft({ ...draft, preferLLM: e.target.checked })}
-              style={{ width: "auto", marginRight: 6 }}
-            />
-            端末内AI（WebLLM）で高精度解析を使う
-          </label>
-          {!webgpu && (
-            <div className="banner warn" style={{ marginTop: 8 }}>
-              この端末はWebGPU非対応のため、簡易解析（ルールベース）で動作します。
-            </div>
-          )}
-        </div>
-
-        <div className="section-label">よく使う予定テンプレ</div>
-        <TemplatesEditor
-          templates={draft.templates}
-          onChange={(templates) => setDraft({ ...draft, templates })}
-        />
-
-        <div className="section-label">統合閲覧する外部カレンダー（ICS購読）</div>
-        <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 10px" }}>
-          Outlook/TimeTree等の「公開URL(.ics)」を貼ると、ここで予定を閲覧できます（読み取り専用）。
-        </p>
-        <IcsSourcesEditor
-          sources={draft.icsSources}
-          onChange={(icsSources) => setDraft({ ...draft, icsSources })}
-        />
-
-        <div className="btn-row">
+        <div className="btn-row" style={{ marginTop: 16 }}>
           <button className="btn ghost" onClick={onClose}>
             閉じる
           </button>
