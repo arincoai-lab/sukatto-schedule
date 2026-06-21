@@ -375,9 +375,20 @@ body {
   border-top: 1px solid var(--glass-border-strong);
   padding: 16px;
   padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  height: 82dvh;
   max-height: 92dvh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.5);
+}
+
+/* タブで内容量が変わっても上端・下端を固定し、中身だけスクロールさせる */
+.modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
 .modal h2 {

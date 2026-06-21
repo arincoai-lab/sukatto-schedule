@@ -180,7 +180,7 @@ export default function SettingsPanel({
   onClose,
 }: Props) {
   const [draft, setDraft] = useState<AppSettings>(settings);
-  const [tab, setTab] = useState<"calendars" | "input" | "display">("calendars");
+  const [tab, setTab] = useState<"calendars" | "input" | "display">("input");
   const [calendars, setCalendars] = useState<{ id: string; summary: string }[]>([]);
   const [outlookCalendars, setOutlookCalendars] = useState<{ id: string; summary: string }[]>(
     [],
@@ -224,6 +224,7 @@ export default function SettingsPanel({
           </button>
         </div>
 
+        <div className="modal-body">
         {tab === "calendars" && (
         <>
         <div className="field">
@@ -408,6 +409,7 @@ export default function SettingsPanel({
           </div>
         </div>
         )}
+        </div>
 
         <div className="btn-row" style={{ marginTop: 16 }}>
           <button className="btn ghost" onClick={onClose}>
