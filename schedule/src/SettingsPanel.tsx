@@ -5,6 +5,7 @@ import type { EventTemplate } from "./types";
 import { isWebGpuAvailable } from "./parse";
 import { listCalendars } from "./calendar/google-events";
 import { listOutlookCalendars } from "./calendar/outlook-events";
+import IcloudSection from "./IcloudSection";
 
 // 設定パネル: GoogleクライアントID（公開値）、書き込み先カレンダー、既定所要時間、
 // 既定の通知、LLM利用可否、外部カレンダー(ICS購読)、よく使う予定テンプレ。
@@ -324,6 +325,14 @@ export default function SettingsPanel({
         <IcsSourcesEditor
           sources={draft.icsSources}
           onChange={(icsSources) => setDraft({ ...draft, icsSources })}
+        />
+
+        <IcloudSection
+          calendars={draft.icloudCalendars}
+          writeUrls={draft.icloudWriteCalendarUrls}
+          onChange={(icloudCalendars, icloudWriteCalendarUrls) =>
+            setDraft({ ...draft, icloudCalendars, icloudWriteCalendarUrls })
+          }
         />
         </>
         )}

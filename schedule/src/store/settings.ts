@@ -14,6 +14,9 @@ export interface AppSettings {
   theme: ThemeMode; // 表示テーマ（light/dark/system）
   outlookClientId: string; // Microsoft Azureに登録したアプリのクライアントID（公開値）
   outlookWriteCalendarIds: string[]; // Outlook側の書き込み先カレンダー(複数可)
+  // iCloud(CalDAV): 資格情報は icloud-cred.ts に分離保存。ここには非機密の選択状態のみ。
+  icloudCalendars: { url: string; displayName: string }[]; // 接続時に取得した一覧キャッシュ
+  icloudWriteCalendarUrls: string[]; // iCloud側の書き込み先カレンダーURL(複数可)
 }
 
 const STORAGE_KEY = "sukatto.settings.v1";
@@ -43,6 +46,8 @@ const DEFAULTS: AppSettings = {
   theme: "system",
   outlookClientId: "",
   outlookWriteCalendarIds: [],
+  icloudCalendars: [],
+  icloudWriteCalendarUrls: [],
 };
 
 export function loadSettings(): AppSettings {

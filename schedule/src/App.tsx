@@ -29,6 +29,13 @@ import {
   deleteOutlookEvent,
 } from "./calendar/outlook-events";
 import { fetchIcsSource } from "./calendar/ics";
+import { loadIcloudCred, hasIcloudCred, clearIcloudCred } from "./calendar/icloud-cred";
+import {
+  insertIcloudEvent,
+  updateIcloudEvent,
+  deleteIcloudEvent,
+  listIcloudEventsRange,
+} from "./calendar/caldav-events";
 import AgendaView from "./calendar/AgendaView";
 import MonthView from "./calendar/MonthView";
 import EventConfirm from "./confirm/EventConfirm";
@@ -48,6 +55,7 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [connected, setConnected] = useState(false);
   const [outlookConnected, setOutlookConnected] = useState(false);
+  const [icloudConnected, setIcloudConnected] = useState(false);
   const [agenda, setAgenda] = useState<CalendarEvent[]>([]);
   const [loadingAgenda, setLoadingAgenda] = useState(false);
   const [icsWarnings, setIcsWarnings] = useState<string[]>([]);
@@ -68,7 +76,9 @@ export default function App() {
   const [editing, setEditing] = useState<ParsedEvent | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCalendarId, setEditingCalendarId] = useState<string | null>(null);
-  const [editingProvider, setEditingProvider] = useState<"google" | "outlook" | null>(null);
+  const [editingProvider, setEditingProvider] = useState<
+    "google" | "outlook" | "icloud" | null
+  >(null);
   const [editBusy, setEditBusy] = useState(false);
 
   // 作成イベントへ既定リマインダーを付与（確認UIにも反映される）
@@ -128,6 +138,25 @@ export default function App() {
         });
         setOutlookConnected(true);
       }
+      // iCloud(CalDAV) も並列取得
+      const icloudCred = loadIcloudCred();
+      if (icloudCred && settings.icloudWriteCalendarUrls.length > 0) {
+        const calName = (url: string) =>
+          settings.icloudCalendars.find((c) => c.url === url)?.displayName ?? "iCloud";
+        const iResults = await Promise.allSettled(
+          settings.icloudWriteCalendarUrls.map((url) =>
+            listIcloudEventsRange(icloudCred, url, calName(url), start, end),
+          ),
+        );
+        iResults.forEach((r, i) => {
+          if (r.status === "fulfilled") all.push(...r.value);
+          else
+            warns.push(
+              `iCloudカレンダー「${settings.icloudCalendars[i]?.displayName ?? ""}」の取得に失敗`,
+            );
+        });
+        setIcloudConnected(true);
+      }
       const results = await Promise.allSettled(
         settings.icsSources.map((s) => fetchIcsSource(s, start, end)),
       );
@@ -141,6 +170,8 @@ export default function App() {
     [
       settings.writeCalendarIds,
       settings.outlookWriteCalendarIds,
+      settings.icloudWriteCalendarUrls,
+      settings.icloudCalendars,
       settings.icsSources,
     ],
   );
@@ -148,7 +179,8 @@ export default function App() {
   const refreshAgenda = useCallback(async () => {
     const token = getAccessToken();
     const hasIcs = settings.icsSources.length > 0;
-    if (!token && !hasIcs) return;
+    const hasIcloud = hasIcloudCred() && settings.icloudWriteCalendarUrls.length > 0;
+    if (!token && !hasIcs && !hasIcloud && !hasOutlookValidToken()) return;
     setLoadingAgenda(true);
     try {
       const start = new Date();
@@ -162,7 +194,7 @@ export default function App() {
     } finally {
       setLoadingAgenda(false);
     }
-  }, [loadRange, settings.icsSources.length]);
+  }, [loadRange, settings.icsSources.length, settings.icloudWriteCalendarUrls.length]);
 
   // 表示中の月（6週グリッド分）の予定を取得
   const refreshMonth = useCallback(async () => {
@@ -185,16 +217,26 @@ export default function App() {
     }
   }, [loadRange, monthCursor, settings.icsSources.length]);
 
+  // いずれかの予定ソース(Google/Outlook/iCloud/ICS)があるか
+  const hasAnySource =
+    connected ||
+    outlookConnected ||
+    icloudConnected ||
+    settings.icsSources.length > 0;
+
   useEffect(() => {
     if (hasValidToken()) setConnected(true);
     if (hasOutlookValidToken()) setOutlookConnected(true);
+    const hasIcloud = hasIcloudCred() && settings.icloudWriteCalendarUrls.length > 0;
+    if (hasIcloud) setIcloudConnected(true);
     if (
       hasValidToken() ||
       hasOutlookValidToken() ||
+      hasIcloud ||
       settings.icsSources.length > 0
     )
       void refreshAgenda();
-  }, [refreshAgenda, settings.icsSources.length]);
+  }, [refreshAgenda, settings.icsSources.length, settings.icloudWriteCalendarUrls.length]);
 
   // テーマ適用（light/dark/system）。system時は端末設定の変化も追従
   useEffect(() => applyTheme(settings.theme), [settings.theme]);
@@ -202,8 +244,14 @@ export default function App() {
   // 月表示の時は表示月に応じて取得
   useEffect(() => {
     if (viewMode !== "month") return;
-    if (hasValidToken() || settings.icsSources.length > 0) void refreshMonth();
-  }, [viewMode, refreshMonth, settings.icsSources.length]);
+    if (
+      hasValidToken() ||
+      hasOutlookValidToken() ||
+      (hasIcloudCred() && settings.icloudWriteCalendarUrls.length > 0) ||
+      settings.icsSources.length > 0
+    )
+      void refreshMonth();
+  }, [viewMode, refreshMonth, settings.icsSources.length, settings.icloudWriteCalendarUrls.length]);
 
   const connect = async () => {
     setError(null);
@@ -280,21 +328,28 @@ export default function App() {
         : [settings.defaultCalendarId || "primary"];
       const oTargets = settings.outlookWriteCalendarIds;
       const wantOutlook = oTargets.length > 0 && settings.outlookClientId;
+      const iTargets = settings.icloudWriteCalendarUrls;
+      const icloudCred = iTargets.length > 0 ? loadIcloudCred() : null;
 
       const gToken = await ensureToken(settings.googleClientId);
       const oToken = wantOutlook
         ? await ensureOutlookToken(settings.outlookClientId)
         : null;
 
+      const icloudName = (url: string) =>
+        settings.icloudCalendars.find((c) => c.url === url)?.displayName ?? "iCloud";
+
       const failures: string[] = [];
       for (const ev of events) {
         const ops: Promise<unknown>[] = [
           ...gTargets.map((cid) => insertEvent(gToken, cid, ev)),
           ...(oToken ? oTargets.map((cid) => insertOutlookEvent(oToken, cid, ev)) : []),
+          ...(icloudCred ? iTargets.map((url) => insertIcloudEvent(icloudCred, url, ev)) : []),
         ];
         const labels = [
           ...gTargets.map((c) => `Google:${c}`),
           ...(oToken ? oTargets.map((c) => `Outlook:${c.slice(0, 8)}`) : []),
+          ...(icloudCred ? iTargets.map((u) => `iCloud:${icloudName(u)}`) : []),
         ];
         const results = await Promise.allSettled(ops);
         results.forEach((r, i) => {
@@ -308,6 +363,7 @@ export default function App() {
       }
       setConnected(true);
       if (wantOutlook) setOutlookConnected(true);
+      if (icloudCred) setIcloudConnected(true);
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     },
@@ -317,6 +373,8 @@ export default function App() {
       settings.defaultCalendarId,
       settings.outlookClientId,
       settings.outlookWriteCalendarIds,
+      settings.icloudWriteCalendarUrls,
+      settings.icloudCalendars,
       refreshAgenda,
       refreshMonth,
       viewMode,
@@ -354,9 +412,10 @@ export default function App() {
   // アジェンダの予定をタップ → 編集モーダルへ。Google/Outlookのみ編集可。
   // 編集/削除は由来カレンダー(e.calendarId)とprovider別のAPIへルーティング。
   const onSelectEvent = (e: CalendarEvent) => {
-    if (e.provider !== "google" && e.provider !== "outlook") return;
+    if (e.provider === "ics") return; // 読み取り専用
     setError(null);
-    setEditingId(e.id);
+    // iCloudはイベント絶対URL(href)が編集/削除の宛先。繰り返しは親URLを使う。
+    setEditingId(e.provider === "icloud" ? (e.href ?? e.id) : e.id);
     setEditingCalendarId(e.calendarId ?? settings.defaultCalendarId);
     setEditingProvider(e.provider);
     setEditing({
@@ -386,9 +445,13 @@ export default function App() {
       if (editingProvider === "google") {
         const token = await ensureToken(settings.googleClientId);
         await updateEvent(token, editingCalendarId, editingId, updated);
-      } else {
+      } else if (editingProvider === "outlook") {
         const token = await ensureOutlookToken(settings.outlookClientId);
         await updateOutlookEvent(token, editingCalendarId, editingId, updated);
+      } else {
+        const cred = loadIcloudCred();
+        if (!cred) throw new Error("iCloud未接続です");
+        await updateIcloudEvent(cred, editingId, updated); // editingId = href
       }
       clearEditState();
       await refreshAgenda();
@@ -408,9 +471,13 @@ export default function App() {
       if (editingProvider === "google") {
         const token = await ensureToken(settings.googleClientId);
         await deleteEvent(token, editingCalendarId, editingId);
-      } else {
+      } else if (editingProvider === "outlook") {
         const token = await ensureOutlookToken(settings.outlookClientId);
         await deleteOutlookEvent(token, editingCalendarId, editingId);
+      } else {
+        const cred = loadIcloudCred();
+        if (!cred) throw new Error("iCloud未接続です");
+        await deleteIcloudEvent(cred, editingId); // editingId = href
       }
       clearEditState();
       await refreshAgenda();
@@ -479,7 +546,7 @@ export default function App() {
           </div>
         )}
 
-        {(connected || outlookConnected) && (
+        {(connected || outlookConnected || icloudConnected) && (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 4 }}>
             {connected && (
               <button
@@ -506,10 +573,29 @@ export default function App() {
                 Outlook切断
               </button>
             )}
+            {icloudConnected && (
+              <button
+                className="link-btn"
+                onClick={() => {
+                  clearIcloudCred();
+                  setIcloudConnected(false);
+                  const next = {
+                    ...settings,
+                    icloudCalendars: [],
+                    icloudWriteCalendarUrls: [],
+                  };
+                  setSettings(next);
+                  saveSettings(next);
+                  void refreshAgenda();
+                }}
+              >
+                iCloud切断
+              </button>
+            )}
           </div>
         )}
 
-        {(connected || settings.icsSources.length > 0) && (
+        {(hasAnySource || connected) && (
           <div className="view-toggle">
             <button
               className={viewMode === "agenda" ? "active" : ""}
@@ -531,7 +617,7 @@ export default function App() {
             <AgendaView
               events={agenda}
               loading={loadingAgenda}
-              connected={connected || settings.icsSources.length > 0}
+              connected={hasAnySource}
               onSelect={onSelectEvent}
             />
           ) : (

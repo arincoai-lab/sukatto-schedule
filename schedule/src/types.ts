@@ -45,6 +45,9 @@ export interface CalendarEvent {
   allDay: boolean;
   location?: string;
   calendarSummary?: string;
-  provider: "google" | "outlook" | "ics"; // google/outlook=編集/削除可、ics=読み取り専用
-  calendarId?: string; // 由来カレンダーID（Google/Outlook編集/削除時に必要）
+  // google/outlook/icloud=編集/削除可、ics=読み取り専用
+  provider: "google" | "outlook" | "ics" | "icloud";
+  calendarId?: string; // 由来カレンダーID/コレクションURL（編集/削除時に必要）
+  href?: string; // iCloud(CalDAV)のイベント絶対URL（PUT/DELETE先）
+  etag?: string; // iCloud(CalDAV)のETag（任意・楽観ロック用）
 }
