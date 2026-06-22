@@ -21,8 +21,10 @@ export function buildEventFromTemplate(
   template: EventTemplate,
   dateStr: string,
   defaultDurationMin: number,
+  override?: { startTime?: string; durationMin?: number },
 ): ParsedEvent {
-  if (template.allDay || !template.startTime) {
+  const startTime = override?.startTime ?? template.startTime;
+  if (template.allDay || !startTime) {
     return {
       title: template.title,
       start: dateStr,
@@ -33,8 +35,11 @@ export function buildEventFromTemplate(
     };
   }
 
-  const start = combine(dateStr, template.startTime);
-  const end = addMinutesIso(start, template.durationMin ?? defaultDurationMin);
+  const start = combine(dateStr, startTime);
+  const end = addMinutesIso(
+    start,
+    override?.durationMin ?? template.durationMin ?? defaultDurationMin,
+  );
   return {
     title: template.title,
     start,

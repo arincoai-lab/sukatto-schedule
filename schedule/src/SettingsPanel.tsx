@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
 import type { AppSettings } from "./store/settings";
 import type { IcsSource } from "./calendar/ics";
-import type { EventTemplate } from "./types";
 import { isWebGpuAvailable } from "./parse";
 import { listCalendars } from "./calendar/google-events";
 import { listOutlookCalendars } from "./calendar/outlook-events";
 import IcloudSection from "./IcloudSection";
-import {
-  FREE_TEMPLATE_LIMIT,
-  PRO_PURCHASE_URL,
-  canAddTemplate,
-  verifyLicense,
-} from "./store/pro";
+import TemplatesEditor from "./templates/TemplatesEditor";
+import { FREE_TEMPLATE_LIMIT, PRO_PURCHASE_URL, verifyLicense } from "./store/pro";
 import { track, EVENTS } from "./util/analytics";
 
 // 設定パネル: GoogleクライアントID（公開値）、書き込み先カレンダー、既定所要時間、
@@ -99,100 +94,6 @@ function IcsSourcesEditor({
       </div>
       <button className="btn" style={{ width: "100%" }} disabled={!url.trim()} onClick={add}>
         ＋ ソースを追加
-      </button>
-    </div>
-  );
-}
-
-function TemplatesEditor({
-  templates,
-  isPro,
-  onChange,
-}: {
-  templates: EventTemplate[];
-  isPro: boolean;
-  onChange: (t: EventTemplate[]) => void;
-}) {
-  const [label, setLabel] = useState("");
-  const [time, setTime] = useState("09:00");
-  const [allDay, setAllDay] = useState(false);
-  const atLimit = !canAddTemplate(isPro, templates.length);
-
-  const add = () => {
-    if (!label.trim()) return;
-    if (atLimit) {
-      track(EVENTS.templateLimitHit);
-      return;
-    }
-    const next: EventTemplate = {
-      id: crypto.randomUUID(),
-      label: label.trim(),
-      title: label.trim(),
-      allDay,
-      startTime: allDay ? undefined : time,
-      durationMin: allDay ? undefined : 60,
-    };
-    onChange([...templates, next]);
-    setLabel("");
-  };
-
-  return (
-    <div>
-      <div className="chip-row" style={{ flexWrap: "wrap" }}>
-        {templates.map((t) => (
-          <span key={t.id} className="chip">
-            {t.label}
-            <span className="chip-sub">{t.allDay ? "終日" : t.startTime}</span>
-            <button
-              className="link-btn"
-              style={{ color: "var(--danger)", padding: "0 0 0 6px" }}
-              onClick={() => onChange(templates.filter((x) => x.id !== t.id))}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="row" style={{ marginTop: 8 }}>
-        <div className="field" style={{ flex: 2 }}>
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="名前（例: 出勤）"
-          />
-        </div>
-        <div className="field" style={{ flex: 1 }}>
-          <input
-            type="time"
-            value={time}
-            disabled={allDay}
-            onChange={(e) => setTime(e.target.value)}
-          />
-        </div>
-      </div>
-      <div className="field">
-        <label>
-          <input
-            type="checkbox"
-            checked={allDay}
-            onChange={(e) => setAllDay(e.target.checked)}
-            style={{ width: "auto", marginRight: 6 }}
-          />
-          終日
-        </label>
-      </div>
-      {atLimit && (
-        <div className="banner warn" style={{ marginTop: 8 }}>
-          無料プランのテンプレは{FREE_TEMPLATE_LIMIT}種類までです。Proで無制限になります。
-        </div>
-      )}
-      <button
-        className="btn"
-        style={{ width: "100%" }}
-        disabled={!label.trim() || atLimit}
-        onClick={add}
-      >
-        ＋ テンプレを追加
       </button>
     </div>
   );

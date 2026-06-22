@@ -1,11 +1,17 @@
 import { useState } from "react";
 import type { EventTemplate } from "../types";
+import { durationMinBetween, endTime } from "./time";
 
-// よく使う予定テンプレのチップ。タップ→日付を選ぶだけで登録フローへ。
+// よく使う予定テンプレのチップ。タップ→日付・時間を確認して登録フローへ。
+// 規定の時間はテンプレから引き継ぎつつ、登録時にその場で微調整できる。
 
 interface Props {
   templates: EventTemplate[];
-  onPick: (template: EventTemplate, dateStr: string) => void;
+  onPick: (
+    template: EventTemplate,
+    dateStr: string,
+    override?: { startTime: string; durationMin: number },
+  ) => void;
 }
 
 function todayStr(offsetDays = 0): string {
@@ -18,16 +24,28 @@ function todayStr(offsetDays = 0): string {
 export default function TemplateBar({ templates, onPick }: Props) {
   const [picking, setPicking] = useState<EventTemplate | null>(null);
   const [date, setDate] = useState(todayStr());
+  const [start, setStart] = useState("09:00");
+  const [end, setEnd] = useState("10:00");
 
   if (templates.length === 0) return null;
 
   const open = (t: EventTemplate) => {
     setDate(todayStr());
+    if (!t.allDay) {
+      const s = t.startTime ?? "09:00";
+      setStart(s);
+      setEnd(endTime(s, t.durationMin ?? 60));
+    }
     setPicking(t);
   };
 
   const confirm = () => {
-    if (picking) onPick(picking, date);
+    if (!picking) return;
+    if (picking.allDay) {
+      onPick(picking, date);
+    } else {
+      onPick(picking, date, { startTime: start, durationMin: durationMinBetween(start, end) });
+    }
     setPicking(null);
   };
 
@@ -48,7 +66,7 @@ export default function TemplateBar({ templates, onPick }: Props) {
           <div className="modal">
             <h2>「{picking.label}」を登録</h2>
             <p style={{ color: "var(--muted)", fontSize: "0.85rem", margin: "0 0 12px" }}>
-              日付を選んでください。
+              日付{picking.allDay ? "" : "と時間"}を確認して登録できます。
             </p>
             <div className="btn-row" style={{ marginBottom: 12 }}>
               <button className="btn" onClick={() => setDate(todayStr())}>
@@ -65,6 +83,18 @@ export default function TemplateBar({ templates, onPick }: Props) {
               <label>日付</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
+            {!picking.allDay && (
+              <div className="row">
+                <div className="field" style={{ flex: 1 }}>
+                  <label>開始</label>
+                  <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+                </div>
+                <div className="field" style={{ flex: 1 }}>
+                  <label>終了</label>
+                  <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+                </div>
+              </div>
+            )}
             <div className="btn-row">
               <button className="btn ghost" onClick={() => setPicking(null)}>
                 やめる

@@ -409,9 +409,13 @@ export default function App() {
     }
   };
 
-  // クイック登録: 確認画面をスキップして即登録
-  const pickTemplate = async (t: EventTemplate, dateStr: string) => {
-    const ev = buildEventFromTemplate(t, dateStr, settings.defaultDurationMin);
+  // クイック登録: 確認画面をスキップして即登録（登録時に時間調整した値を反映）
+  const pickTemplate = async (
+    t: EventTemplate,
+    dateStr: string,
+    override?: { startTime: string; durationMin: number },
+  ) => {
+    const ev = buildEventFromTemplate(t, dateStr, settings.defaultDurationMin, override);
     setError(null);
     setParsing(`「${t.label}」を登録中…`);
     try {
