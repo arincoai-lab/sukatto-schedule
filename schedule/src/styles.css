@@ -110,31 +110,151 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 88px; /* 入力ドック分 */
+  padding-bottom: 156px; /* 入力ゾーン(クイック登録+ドック)分 */
   -webkit-overflow-scrolling: touch;
 }
 
-/* 入力ドック: 半透明ベース＋blur で背景が透ける */
-.input-dock {
+/* 接続ステータス: 接続中のカレンダーを一目で。横スクロール対応。 */
+.conn-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-width: none;
+}
+.conn-bar::-webkit-scrollbar {
+  display: none;
+}
+.conn-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px 6px 12px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  color: var(--text);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+.conn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 7px rgba(255, 255, 255, 0.2);
+  animation: conn-pulse 2.4s ease-in-out infinite;
+}
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.conn-name {
+  font-weight: 700;
+}
+.conn-state {
+  font-size: 0.7rem;
+  color: var(--ok);
+  font-weight: 600;
+}
+.conn-off {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--muted-2);
+  font-size: 0.72rem;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+.conn-off:active {
+  background: var(--glass-strong);
+  color: var(--text);
+}
+
+/* 入力ゾーン: クイック登録ストリップ + 入力ドックをまとめた画面下の固定帯。
+   半透明ベース＋blur で背景(カレンダー)が透ける。 */
+.input-zone {
   position: fixed;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
   max-width: 540px;
-  display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-  padding-bottom: max(env(safe-area-inset-bottom), 12px);
   background: linear-gradient(
     to top,
-    rgba(6, 10, 24, 0.85) 60%,
-    rgba(6, 10, 24, 0.5) 90%,
+    rgba(6, 10, 24, 0.92) 72%,
+    rgba(6, 10, 24, 0.6) 92%,
     transparent
   );
   border-top: 1px solid var(--glass-border);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
+  padding-bottom: max(env(safe-area-inset-bottom), 10px);
+}
+
+/* クイック登録: 横スクロールのストリップ。増えても縦に伸びない。 */
+.quick-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 12px 4px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.quick-strip::-webkit-scrollbar {
+  display: none;
+}
+.quick-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 70px;
+  min-height: 48px;
+  padding: 6px 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  color: var(--text);
+  cursor: pointer;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+.quick-chip:active {
+  background: var(--glass-strong);
+  border-color: var(--glass-border-strong);
+  transform: scale(0.96);
+}
+.quick-chip-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.quick-chip-sub {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* 入力ドック: 話す/撮る/打つ */
+.input-dock {
+  display: flex;
+  gap: 8px;
+  padding: 6px 12px 8px;
 }
 
 /* グラスモーフィズム ベース */
@@ -671,54 +791,6 @@ body {
   margin-top: 10px;
 }
 
-/* クイック登録: 大きめのフラットチップ */
-.template-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 8px;
-  margin: 0 0 4px;
-}
-
-.template-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: 56px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: 8px 6px;
-  color: var(--text);
-  cursor: pointer;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 4px 14px rgba(0, 0, 0, 0.18);
-  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
-}
-
-.template-chip:active {
-  background: var(--glass-strong);
-  border-color: var(--glass-border-strong);
-  transform: scale(0.96);
-}
-
-.template-chip-label {
-  font-size: 0.98rem;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  color: var(--text);
-}
-
-.template-chip-sub {
-  font-size: 0.72rem;
-  color: var(--muted);
-}
-
 /* 設定画面の編集用チップ列(横並び) */
 .chip-row {
   display: flex;
@@ -834,12 +906,12 @@ body {
   background-color: var(--bg);
 }
 
-/* ライト時の入力ドック: 明るい半透明 */
-:root[data-theme="light"] .input-dock {
+/* ライト時の入力ゾーン: 明るい半透明 */
+:root[data-theme="light"] .input-zone {
   background: linear-gradient(
     to top,
-    rgba(238, 241, 248, 0.9) 60%,
-    rgba(238, 241, 248, 0.5) 90%,
+    rgba(238, 241, 248, 0.92) 72%,
+    rgba(238, 241, 248, 0.55) 92%,
     transparent
   );
 }

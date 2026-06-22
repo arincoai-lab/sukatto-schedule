@@ -33,12 +33,12 @@ export default function TemplateBar({ templates, onPick }: Props) {
 
   return (
     <>
-      <div className="section-label">クイック登録</div>
-      <div className="template-grid">
+      {/* 横スクロールのストリップ。テンプレが増えても縦に伸びず、入力ドック直上に収まる。 */}
+      <div className="quick-strip" aria-label="クイック登録">
         {templates.map((t) => (
-          <button key={t.id} className="template-chip" onClick={() => open(t)}>
-            <span className="template-chip-label">{t.label}</span>
-            <span className="template-chip-sub">{t.allDay ? "終日" : t.startTime}</span>
+          <button key={t.id} className="quick-chip" onClick={() => open(t)}>
+            <span className="quick-chip-label">{t.label}</span>
+            <span className="quick-chip-sub">{t.allDay ? "終日" : t.startTime}</span>
           </button>
         ))}
       </div>

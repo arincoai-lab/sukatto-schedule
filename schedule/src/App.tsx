@@ -42,9 +42,13 @@ import EventConfirm from "./confirm/EventConfirm";
 import EventEdit from "./confirm/EventEdit";
 import QuickAdd from "./input/QuickAdd";
 import VoiceCapture, { isVoiceSupported } from "./input/VoiceCapture";
+import UpgradePrompt from "./pro/UpgradePrompt";
+import { canUseVoice, recordVoiceUse } from "./store/pro";
+import { track, EVENTS } from "./util/analytics";
 import PhotoCapture from "./input/PhotoCapture";
 import SettingsPanel from "./SettingsPanel";
 import TemplateBar from "./templates/TemplateBar";
+import ConnectionBar, { type ConnService } from "./calendar/ConnectionBar";
 import { buildEventFromTemplate } from "./templates/build";
 import { applyTheme } from "./util/theme";
 import type { EventSource, EventTemplate } from "./types";
@@ -67,6 +71,10 @@ export default function App() {
   const [monthLoading, setMonthLoading] = useState(false);
 
   const [modal, setModal] = useState<Modal>("none");
+  // 無料上限に達したときの買い切りPro案内（reason=どの機能で当たったか）
+  const [upgrade, setUpgrade] = useState<{ title: string; reason: "voice" | "template" } | null>(
+    null,
+  );
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [parsing, setParsing] = useState<string | null>(null); // 進捗テキスト
   const [saving, setSaving] = useState(false);
@@ -241,6 +249,11 @@ export default function App() {
   // テーマ適用（light/dark/system）。system時は端末設定の変化も追従
   useEffect(() => applyTheme(settings.theme), [settings.theme]);
 
+  // 起動を1回だけ計測（個人情報なし）
+  useEffect(() => {
+    track(EVENTS.appOpened);
+  }, []);
+
   // 月表示の時は表示月に応じて取得
   useEffect(() => {
     if (viewMode !== "month") return;
@@ -387,6 +400,7 @@ export default function App() {
     setError(null);
     try {
       await registerEvents(events);
+      track(EVENTS.eventRegistered, { count: events.length });
       setParseResult(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "登録に失敗しました");
@@ -402,6 +416,7 @@ export default function App() {
     setParsing(`「${t.label}」を登録中…`);
     try {
       await registerEvents(withDefaultReminder([ev]));
+      track(EVENTS.eventRegistered, { count: 1, via: "template" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "登録に失敗しました");
     } finally {
@@ -496,6 +511,49 @@ export default function App() {
     void refreshAgenda();
   };
 
+  // 接続中サービス（上部の接続ステータス表示用）。切断ロジックも同梱。
+  const connServices: ConnService[] = [];
+  if (connected) {
+    connServices.push({
+      key: "google",
+      label: "Google",
+      color: "#4285F4",
+      onDisconnect: () => {
+        signOut();
+        setConnected(false);
+        setAgenda([]);
+        setMonthEvents([]);
+      },
+    });
+  }
+  if (outlookConnected) {
+    connServices.push({
+      key: "outlook",
+      label: "Outlook",
+      color: "#0078D4",
+      onDisconnect: () => {
+        outlookSignOut();
+        setOutlookConnected(false);
+        void refreshAgenda();
+      },
+    });
+  }
+  if (icloudConnected) {
+    connServices.push({
+      key: "icloud",
+      label: "iCloud",
+      color: "#34c759",
+      onDisconnect: () => {
+        clearIcloudCred();
+        setIcloudConnected(false);
+        const next = { ...settings, icloudCalendars: [], icloudWriteCalendarUrls: [] };
+        setSettings(next);
+        saveSettings(next);
+        void refreshAgenda();
+      },
+    });
+  }
+
   return (
     <>
       <header className="app-header">
@@ -518,9 +576,6 @@ export default function App() {
             {parsing}
           </div>
         )}
-
-        {/* クイック登録はリスト/カレンダーどちらの表示でも常時表示 */}
-        <TemplateBar templates={settings.templates} onPick={pickTemplate} />
 
         {!connected && (
           <div className="card" style={{ marginBottom: 12 }}>
@@ -546,54 +601,7 @@ export default function App() {
           </div>
         )}
 
-        {(connected || outlookConnected || icloudConnected) && (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 4 }}>
-            {connected && (
-              <button
-                className="link-btn"
-                onClick={() => {
-                  signOut();
-                  setConnected(false);
-                  setAgenda([]);
-                  setMonthEvents([]);
-                }}
-              >
-                Google切断
-              </button>
-            )}
-            {outlookConnected && (
-              <button
-                className="link-btn"
-                onClick={() => {
-                  outlookSignOut();
-                  setOutlookConnected(false);
-                  void refreshAgenda();
-                }}
-              >
-                Outlook切断
-              </button>
-            )}
-            {icloudConnected && (
-              <button
-                className="link-btn"
-                onClick={() => {
-                  clearIcloudCred();
-                  setIcloudConnected(false);
-                  const next = {
-                    ...settings,
-                    icloudCalendars: [],
-                    icloudWriteCalendarUrls: [],
-                  };
-                  setSettings(next);
-                  saveSettings(next);
-                  void refreshAgenda();
-                }}
-              >
-                iCloud切断
-              </button>
-            )}
-          </div>
-        )}
+        <ConnectionBar services={connServices} />
 
         {(hasAnySource || connected) && (
           <div className="view-toggle">
@@ -638,31 +646,48 @@ export default function App() {
         </div>
       </main>
 
-      <nav className="input-dock">
-        <button
-          className="dock-btn"
-          onClick={() => setModal("voice")}
-          disabled={!isVoiceSupported()}
-          title={isVoiceSupported() ? "" : "この端末は音声入力に非対応"}
-        >
-          <span className="ico">🎙️</span>
-          話す
-        </button>
-        <button className="dock-btn" onClick={() => setModal("photo")}>
-          <span className="ico">📷</span>
-          撮る
-        </button>
-        <button className="dock-btn primary" onClick={() => setModal("quick")}>
-          <span className="ico">✏️</span>
-          打つ
-        </button>
-      </nav>
+      {/* 入力ゾーン: クイック登録ストリップ + 話す/撮る/打つ を画面下にまとめて親指圏に。 */}
+      <div className="input-zone">
+        <TemplateBar templates={settings.templates} onPick={pickTemplate} />
+        <nav className="input-dock">
+          <button
+            className="dock-btn"
+            onClick={() => {
+              if (!canUseVoice(settings.isPro)) {
+                track(EVENTS.voiceLimitHit);
+                setUpgrade({ title: "音声入力は無料で1日3回までです。", reason: "voice" });
+                return;
+              }
+              setModal("voice");
+            }}
+            disabled={!isVoiceSupported()}
+            title={isVoiceSupported() ? "" : "この端末は音声入力に非対応"}
+          >
+            <span className="ico">🎙️</span>
+            話す
+          </button>
+          <button className="dock-btn" onClick={() => setModal("photo")}>
+            <span className="ico">📷</span>
+            撮る
+          </button>
+          <button className="dock-btn primary" onClick={() => setModal("quick")}>
+            <span className="ico">✏️</span>
+            打つ
+          </button>
+        </nav>
+      </div>
 
       {modal === "quick" && (
         <QuickAdd onCancel={() => setModal("none")} onSubmit={(t) => runParse(t, "manual")} />
       )}
       {modal === "voice" && (
-        <VoiceCapture onCancel={() => setModal("none")} onResult={(t) => runParse(t, "voice")} />
+        <VoiceCapture
+          onCancel={() => setModal("none")}
+          onResult={(t) => {
+            if (!settings.isPro) recordVoiceUse();
+            void runParse(t, "voice");
+          }}
+        />
       )}
       {modal === "photo" && (
         <PhotoCapture onCancel={() => setModal("none")} onText={(t) => runParse(t, "photo")} />
@@ -673,7 +698,23 @@ export default function App() {
           token={getAccessToken()}
           outlookToken={getOutlookAccessToken()}
           onSave={onSaveSettings}
+          onUnlockPro={() => {
+            const next = { ...settings, isPro: true };
+            setSettings(next);
+            saveSettings(next);
+          }}
           onClose={() => setModal("none")}
+        />
+      )}
+      {upgrade && (
+        <UpgradePrompt
+          title={upgrade.title}
+          reason={upgrade.reason}
+          onOpenSettings={() => {
+            setUpgrade(null);
+            setModal("settings");
+          }}
+          onClose={() => setUpgrade(null)}
         />
       )}
 

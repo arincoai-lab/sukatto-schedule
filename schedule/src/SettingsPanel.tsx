@@ -6,6 +6,13 @@ import { isWebGpuAvailable } from "./parse";
 import { listCalendars } from "./calendar/google-events";
 import { listOutlookCalendars } from "./calendar/outlook-events";
 import IcloudSection from "./IcloudSection";
+import {
+  FREE_TEMPLATE_LIMIT,
+  PRO_PURCHASE_URL,
+  canAddTemplate,
+  verifyLicense,
+} from "./store/pro";
+import { track, EVENTS } from "./util/analytics";
 
 // 設定パネル: GoogleクライアントID（公開値）、書き込み先カレンダー、既定所要時間、
 // 既定の通知、LLM利用可否、外部カレンダー(ICS購読)、よく使う予定テンプレ。
@@ -25,6 +32,7 @@ interface Props {
   token: string | null;
   outlookToken: string | null;
   onSave: (s: AppSettings) => void;
+  onUnlockPro: () => void; // ライセンス検証成功時に即時永続化（モーダルは閉じない）
   onClose: () => void;
 }
 
@@ -98,17 +106,24 @@ function IcsSourcesEditor({
 
 function TemplatesEditor({
   templates,
+  isPro,
   onChange,
 }: {
   templates: EventTemplate[];
+  isPro: boolean;
   onChange: (t: EventTemplate[]) => void;
 }) {
   const [label, setLabel] = useState("");
   const [time, setTime] = useState("09:00");
   const [allDay, setAllDay] = useState(false);
+  const atLimit = !canAddTemplate(isPro, templates.length);
 
   const add = () => {
     if (!label.trim()) return;
+    if (atLimit) {
+      track(EVENTS.templateLimitHit);
+      return;
+    }
     const next: EventTemplate = {
       id: crypto.randomUUID(),
       label: label.trim(),
@@ -166,8 +181,82 @@ function TemplatesEditor({
           終日
         </label>
       </div>
-      <button className="btn" style={{ width: "100%" }} disabled={!label.trim()} onClick={add}>
+      {atLimit && (
+        <div className="banner warn" style={{ marginTop: 8 }}>
+          無料プランのテンプレは{FREE_TEMPLATE_LIMIT}種類までです。Proで無制限になります。
+        </div>
+      )}
+      <button
+        className="btn"
+        style={{ width: "100%" }}
+        disabled={!label.trim() || atLimit}
+        onClick={add}
+      >
         ＋ テンプレを追加
+      </button>
+    </div>
+  );
+}
+
+// 買い切りProの状態表示・購入導線・ライセンスキー解除。
+function ProSection({ isPro, onUnlock }: { isPro: boolean; onUnlock: () => void }) {
+  const [key, setKey] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (isPro) {
+    return (
+      <div className="card" style={{ marginBottom: 4 }}>
+        <div className="title" style={{ fontSize: "0.95rem" }}>✓ Pro 有効</div>
+        <div className="meta">音声入力・テンプレが無制限です。ご支援ありがとうございます。</div>
+      </div>
+    );
+  }
+
+  const unlock = async () => {
+    setBusy(true);
+    setStatus(null);
+    const result = await verifyLicense(key);
+    setBusy(false);
+    if (result.valid) {
+      track(EVENTS.proUnlocked);
+      onUnlock();
+    } else {
+      setStatus(result.error ?? "ライセンスを確認できませんでした");
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ color: "var(--muted)", fontSize: "0.82rem", margin: "0 0 10px" }}>
+        無料プランはテンプレ{FREE_TEMPLATE_LIMIT}種類・音声入力1日3回まで。Proなら全部無制限（買い切り・月額なし）。
+      </p>
+      <button
+        className="btn primary"
+        style={{ width: "100%", marginBottom: 12 }}
+        onClick={() => {
+          track(EVENTS.proCtaClicked, { from: "settings" });
+          window.open(PRO_PURCHASE_URL, "_blank", "noopener,noreferrer");
+        }}
+      >
+        Proにする（買い切り）
+      </button>
+      <div className="field">
+        <label>購入済みの方：ライセンスキー</label>
+        <input
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="購入時に発行されたキーを貼り付け"
+        />
+      </div>
+      {status && <div className="banner error" style={{ marginBottom: 8 }}>{status}</div>}
+      <button
+        className="btn"
+        style={{ width: "100%" }}
+        disabled={!key.trim() || busy}
+        onClick={unlock}
+      >
+        {busy ? "確認中…" : "ライセンスで解除"}
       </button>
     </div>
   );
@@ -178,9 +267,15 @@ export default function SettingsPanel({
   token,
   outlookToken,
   onSave,
+  onUnlockPro,
   onClose,
 }: Props) {
   const [draft, setDraft] = useState<AppSettings>(settings);
+
+  const handleProUnlock = () => {
+    setDraft((d) => ({ ...d, isPro: true }));
+    onUnlockPro();
+  };
   const [tab, setTab] = useState<"calendars" | "input" | "display">("input");
   const [calendars, setCalendars] = useState<{ id: string; summary: string }[]>([]);
   const [outlookCalendars, setOutlookCalendars] = useState<{ id: string; summary: string }[]>(
@@ -339,9 +434,13 @@ export default function SettingsPanel({
 
         {tab === "input" && (
         <>
-        <div className="section-label">よく使う予定テンプレ</div>
+        <div className="section-label">プラン</div>
+        <ProSection isPro={draft.isPro} onUnlock={handleProUnlock} />
+
+        <div className="section-label" style={{ marginTop: 14 }}>よく使う予定テンプレ</div>
         <TemplatesEditor
           templates={draft.templates}
+          isPro={draft.isPro}
           onChange={(templates) => setDraft({ ...draft, templates })}
         />
 
