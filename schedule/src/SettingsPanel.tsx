@@ -200,7 +200,7 @@ export default function SettingsPanel({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal modal-fixed">
         <h2>設定</h2>
 
         <div className="view-toggle" style={{ marginTop: 0 }}>

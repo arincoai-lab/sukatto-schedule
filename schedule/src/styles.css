@@ -495,11 +495,18 @@ body {
   border-top: 1px solid var(--glass-border-strong);
   padding: 16px;
   padding-bottom: max(env(safe-area-inset-bottom), 16px);
-  height: 82dvh;
+  /* 既定は中身の高さに合わせて下付け（ボトムシート）。余白を作らない。 */
   max-height: 92dvh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.5);
+}
+
+/* 設定モーダルだけは高さを固定し、タブ切替で上端・下端が動かないようにする。 */
+.modal.modal-fixed {
+  height: 82dvh;
+  overflow: hidden;
 }
 
 /* タブで内容量が変わっても上端・下端を固定し、中身だけスクロールさせる */
