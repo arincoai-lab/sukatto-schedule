@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
-import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE } from "./_lib/site";
 
@@ -52,19 +52,12 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
   return (
     <html lang="ja" className={display.variable}>
       <body>
         {children}
-        {plausibleDomain && (
-          <Script
-            defer
-            data-domain={plausibleDomain}
-            src="https://plausible.io/js/script.outbound-links.js"
-            strategy="afterInteractive"
-          />
-        )}
+        {/* Vercel Web Analytics（Cookie不要・プライバシー配慮）。ページビュー＋カスタムイベント。 */}
+        <Analytics />
       </body>
     </html>
   );

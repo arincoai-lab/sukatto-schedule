@@ -1,12 +1,9 @@
 "use client";
 
+import { track } from "@vercel/analytics";
 import { APP_URL } from "../_lib/site";
 
 // アプリ本体へ誘導するCTA。クリックを計測（LP→アプリの転換率を見る）。
-
-interface PlausibleWindow {
-  plausible?: (event: string, opts?: { props?: Record<string, string> }) => void;
-}
 
 export default function TryButton({
   variant = "primary",
@@ -19,7 +16,7 @@ export default function TryButton({
 }) {
   const onClick = () => {
     try {
-      (window as unknown as PlausibleWindow).plausible?.("lp_try_clicked", { props: { from } });
+      track("lp_try_clicked", { from });
     } catch {
       /* 計測失敗は無視 */
     }
