@@ -1,11 +1,12 @@
 // プライバシー配慮の軽量イベント計測。Cookieもユーザー識別も持たない。
-// 本番では Plausible スクリプト(index.htmlで任意に有効化)があれば送信し、
-// 無ければ no-op。検証用に window.__sukattoEvents へも記録する。
+// Vercel Web Analytics にカスタムイベントを送る（main.tsx の inject() で初期化済み）。
+// 検証用に window.__sukattoEvents へも記録する。
+
+import { track as vercelTrack } from "@vercel/analytics";
 
 type EventProps = Record<string, string | number | boolean>;
 
-interface PlausibleWindow {
-  plausible?: (event: string, opts?: { props?: EventProps }) => void;
+interface EventLogWindow {
   __sukattoEvents?: { name: string; props?: EventProps; ts: number }[];
 }
 
@@ -14,9 +15,9 @@ interface PlausibleWindow {
  */
 export function track(name: string, props?: EventProps): void {
   if (typeof window === "undefined") return;
-  const w = window as unknown as PlausibleWindow;
   try {
-    w.plausible?.(name, props ? { props } : undefined);
+    vercelTrack(name, props);
+    const w = window as unknown as EventLogWindow;
     (w.__sukattoEvents ??= []).push({ name, props, ts: Date.now() });
   } catch {
     /* 計測失敗はアプリ動作に影響させない */
