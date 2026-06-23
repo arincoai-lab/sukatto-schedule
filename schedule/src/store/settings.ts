@@ -17,6 +17,8 @@ export interface AppSettings {
   // iCloud(CalDAV): 資格情報は icloud-cred.ts に分離保存。ここには非機密の選択状態のみ。
   icloudCalendars: { url: string; displayName: string }[]; // 接続時に取得した一覧キャッシュ
   icloudWriteCalendarUrls: string[]; // iCloud側の書き込み先カレンダーURL(複数可)
+  // 課金（買い切りPro）: ライセンスキー検証が通ると true。無料は機能上限あり。
+  isPro: boolean;
 }
 
 const STORAGE_KEY = "sukatto.settings.v1";
@@ -48,6 +50,7 @@ const DEFAULTS: AppSettings = {
   outlookWriteCalendarIds: [],
   icloudCalendars: [],
   icloudWriteCalendarUrls: [],
+  isPro: false,
 };
 
 export function loadSettings(): AppSettings {

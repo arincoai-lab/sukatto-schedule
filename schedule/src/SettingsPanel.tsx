@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type { AppSettings } from "./store/settings";
 import type { IcsSource } from "./calendar/ics";
-import type { EventTemplate } from "./types";
 import { isWebGpuAvailable } from "./parse";
 import { listCalendars } from "./calendar/google-events";
 import { listOutlookCalendars } from "./calendar/outlook-events";
 import IcloudSection from "./IcloudSection";
+import TemplatesEditor from "./templates/TemplatesEditor";
+import { FREE_TEMPLATE_LIMIT, PRO_PURCHASE_URL, verifyLicense } from "./store/pro";
+import { track, EVENTS } from "./util/analytics";
 
 // 設定パネル: GoogleクライアントID（公開値）、書き込み先カレンダー、既定所要時間、
 // 既定の通知、LLM利用可否、外部カレンダー(ICS購読)、よく使う予定テンプレ。
@@ -25,6 +27,7 @@ interface Props {
   token: string | null;
   outlookToken: string | null;
   onSave: (s: AppSettings) => void;
+  onUnlockPro: () => void; // ライセンス検証成功時に即時永続化（モーダルは閉じない）
   onClose: () => void;
 }
 
@@ -96,78 +99,65 @@ function IcsSourcesEditor({
   );
 }
 
-function TemplatesEditor({
-  templates,
-  onChange,
-}: {
-  templates: EventTemplate[];
-  onChange: (t: EventTemplate[]) => void;
-}) {
-  const [label, setLabel] = useState("");
-  const [time, setTime] = useState("09:00");
-  const [allDay, setAllDay] = useState(false);
+// 買い切りProの状態表示・購入導線・ライセンスキー解除。
+function ProSection({ isPro, onUnlock }: { isPro: boolean; onUnlock: () => void }) {
+  const [key, setKey] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const add = () => {
-    if (!label.trim()) return;
-    const next: EventTemplate = {
-      id: crypto.randomUUID(),
-      label: label.trim(),
-      title: label.trim(),
-      allDay,
-      startTime: allDay ? undefined : time,
-      durationMin: allDay ? undefined : 60,
-    };
-    onChange([...templates, next]);
-    setLabel("");
+  if (isPro) {
+    return (
+      <div className="card" style={{ marginBottom: 4 }}>
+        <div className="title" style={{ fontSize: "0.95rem" }}>✓ Pro 有効</div>
+        <div className="meta">音声入力・テンプレが無制限です。ご支援ありがとうございます。</div>
+      </div>
+    );
+  }
+
+  const unlock = async () => {
+    setBusy(true);
+    setStatus(null);
+    const result = await verifyLicense(key);
+    setBusy(false);
+    if (result.valid) {
+      track(EVENTS.proUnlocked);
+      onUnlock();
+    } else {
+      setStatus(result.error ?? "ライセンスを確認できませんでした");
+    }
   };
 
   return (
     <div>
-      <div className="chip-row" style={{ flexWrap: "wrap" }}>
-        {templates.map((t) => (
-          <span key={t.id} className="chip">
-            {t.label}
-            <span className="chip-sub">{t.allDay ? "終日" : t.startTime}</span>
-            <button
-              className="link-btn"
-              style={{ color: "var(--danger)", padding: "0 0 0 6px" }}
-              onClick={() => onChange(templates.filter((x) => x.id !== t.id))}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      <div className="row" style={{ marginTop: 8 }}>
-        <div className="field" style={{ flex: 2 }}>
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="名前（例: 出勤）"
-          />
-        </div>
-        <div className="field" style={{ flex: 1 }}>
-          <input
-            type="time"
-            value={time}
-            disabled={allDay}
-            onChange={(e) => setTime(e.target.value)}
-          />
-        </div>
-      </div>
+      <p style={{ color: "var(--muted)", fontSize: "0.82rem", margin: "0 0 10px" }}>
+        無料プランはテンプレ{FREE_TEMPLATE_LIMIT}種類・音声入力1日3回まで。Proなら全部無制限（買い切り・月額なし）。
+      </p>
+      <button
+        className="btn primary"
+        style={{ width: "100%", marginBottom: 12 }}
+        onClick={() => {
+          track(EVENTS.proCtaClicked, { from: "settings" });
+          window.open(PRO_PURCHASE_URL, "_blank", "noopener,noreferrer");
+        }}
+      >
+        Proにする（買い切り）
+      </button>
       <div className="field">
-        <label>
-          <input
-            type="checkbox"
-            checked={allDay}
-            onChange={(e) => setAllDay(e.target.checked)}
-            style={{ width: "auto", marginRight: 6 }}
-          />
-          終日
-        </label>
+        <label>購入済みの方：ライセンスキー</label>
+        <input
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="購入時に発行されたキーを貼り付け"
+        />
       </div>
-      <button className="btn" style={{ width: "100%" }} disabled={!label.trim()} onClick={add}>
-        ＋ テンプレを追加
+      {status && <div className="banner error" style={{ marginBottom: 8 }}>{status}</div>}
+      <button
+        className="btn"
+        style={{ width: "100%" }}
+        disabled={!key.trim() || busy}
+        onClick={unlock}
+      >
+        {busy ? "確認中…" : "ライセンスで解除"}
       </button>
     </div>
   );
@@ -178,9 +168,15 @@ export default function SettingsPanel({
   token,
   outlookToken,
   onSave,
+  onUnlockPro,
   onClose,
 }: Props) {
   const [draft, setDraft] = useState<AppSettings>(settings);
+
+  const handleProUnlock = () => {
+    setDraft((d) => ({ ...d, isPro: true }));
+    onUnlockPro();
+  };
   const [tab, setTab] = useState<"calendars" | "input" | "display">("input");
   const [calendars, setCalendars] = useState<{ id: string; summary: string }[]>([]);
   const [outlookCalendars, setOutlookCalendars] = useState<{ id: string; summary: string }[]>(
@@ -204,7 +200,7 @@ export default function SettingsPanel({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal modal-fixed">
         <h2>設定</h2>
 
         <div className="view-toggle" style={{ marginTop: 0 }}>
@@ -339,9 +335,13 @@ export default function SettingsPanel({
 
         {tab === "input" && (
         <>
-        <div className="section-label">よく使う予定テンプレ</div>
+        <div className="section-label">プラン</div>
+        <ProSection isPro={draft.isPro} onUnlock={handleProUnlock} />
+
+        <div className="section-label" style={{ marginTop: 14 }}>よく使う予定テンプレ</div>
         <TemplatesEditor
           templates={draft.templates}
+          isPro={draft.isPro}
           onChange={(templates) => setDraft({ ...draft, templates })}
         />
 

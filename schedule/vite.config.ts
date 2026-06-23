@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { fetchIcs } from "./server/ics-proxy";
 import { forwardCaldav } from "./server/caldav-proxy";
+import { verifyLicense } from "./server/license-proxy";
 
 // ローカル開発で /api/ics を本番(Vercel Function)と同じロジックで提供するミドルウェア。
 function icsProxyDevPlugin(): Plugin {
@@ -67,12 +68,48 @@ function caldavProxyDevPlugin(): Plugin {
   };
 }
 
+// ローカル開発で /api/license を本番と同じロジックで提供する（買い切りProのキー検証）。
+function licenseProxyDevPlugin(): Plugin {
+  return {
+    name: "license-proxy-dev",
+    configureServer(server) {
+      server.middlewares.use("/api/license", async (req, res) => {
+        const method = (req as { method?: string }).method ?? "GET";
+        if (method.toUpperCase() !== "POST") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "POSTのみ受け付けます" }));
+          return;
+        }
+        const chunks: Uint8Array[] = [];
+        for await (const c of req as AsyncIterable<Uint8Array>) chunks.push(c);
+        let licenseKey: string | undefined;
+        try {
+          const text = Buffer.concat(chunks).toString("utf-8");
+          licenseKey = (JSON.parse(text) as { licenseKey?: string }).licenseKey;
+        } catch {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "リクエストボディが不正です" }));
+          return;
+        }
+        const result = await verifyLicense(licenseKey, process.env.GUMROAD_PRODUCT_ID);
+        res.statusCode = result.ok ? 200 : result.status;
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Cache-Control", "no-store");
+        res.end(JSON.stringify({ valid: result.valid, error: result.error }));
+      });
+    },
+  };
+}
+
 // 静的PWA + ICS取得用の極小プロキシ（CORS回避のみ）。
 export default defineConfig({
   plugins: [
     react(),
     icsProxyDevPlugin(),
     caldavProxyDevPlugin(),
+    licenseProxyDevPlugin(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "icon-maskable-192.png", "icon-maskable-512.png"],

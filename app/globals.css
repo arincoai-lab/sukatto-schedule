@@ -1,26 +1,616 @@
-@import "tailwindcss";
+/*
+ * スカッと予定 LP デザインシステム。
+ * アプリ本体(schedule/src/styles.css)の世界観を踏襲:
+ * 深いネイビー × グラスモーフィズム × スカイブルーの光のリング。
+ * 落ち着いた・信頼感・"スッと片付く"余白。
+ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #060a18;
+  --bg-top: #0c1430;
+  --bg-bot: #04060f;
+
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-strong: rgba(255, 255, 255, 0.075);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+
+  --text: #f3f5fb;
+  --muted: #a8b3cc;
+  --muted-2: #7e8aa6;
+
+  --accent: #6cc1ff;
+  --accent-2: #8b7bff;
+  --accent-press: #3a9eea;
+  --accent-soft: rgba(108, 193, 255, 0.16);
+  --on-accent: #061226;
+
+  --ok: #5cd6a3;
+  --warn: #ffc857;
+
+  --ring: 0 0 0 1px rgba(108, 193, 255, 0.45), 0 0 28px rgba(108, 193, 255, 0.28);
+
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 26px;
+
+  --maxw: 1080px;
+
+  /* フォント: 本文は端末の高品質な日本語フォント、見出しは next/font の欧文ディスプレイ。
+     --font-display は layout.tsx の next/font が上書きする。 */
+  --font-body: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic",
+    system-ui, sans-serif;
+  --font-display: var(--font-body);
+
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  color: var(--text);
+  background:
+    radial-gradient(1100px 700px at 50% -200px, rgba(108, 193, 255, 0.14), transparent 60%),
+    radial-gradient(900px 600px at 100% 8%, rgba(139, 123, 255, 0.12), transparent 55%),
+    radial-gradient(700px 500px at 0% 100%, rgba(108, 193, 255, 0.07), transparent 60%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 100%);
+  background-color: var(--bg);
+  background-attachment: fixed;
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Hiragino Sans",
+    "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  line-height: 1.7;
+}
+
+/* かすかなノイズ質感で平板さを消す */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.display {
+  font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* ---- レイアウト ---- */
+.wrap {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.section {
+  padding: 84px 0;
+}
+
+.eyebrow {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+h2.section-title {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(1.7rem, 4.4vw, 2.5rem);
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 14px 0 14px;
+}
+
+.lead {
+  color: var(--muted);
+  font-size: 1.02rem;
+  max-width: 46ch;
+}
+
+/* ---- ナビ ---- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: linear-gradient(180deg, rgba(6, 10, 24, 0.82), rgba(6, 10, 24, 0.35));
+  border-bottom: 1px solid var(--glass-border);
+}
+.nav-inner {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wordmark {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.wordmark .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--ring);
+}
+
+/* ---- ボタン ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #8fd2ff, var(--accent));
+  color: var(--on-accent);
+  box-shadow: 0 8px 30px rgba(108, 193, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(108, 193, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-ghost {
+  background: var(--glass);
+  border-color: var(--glass-border-strong);
+  color: var(--text);
+}
+.btn-ghost:hover {
+  background: var(--glass-strong);
+}
+.btn-sm {
+  height: 42px;
+  padding: 0 18px;
+  font-size: 0.92rem;
+}
+
+/* ---- グラスカード ---- */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ---- ヒーロー ---- */
+.hero {
+  padding: clamp(56px, 9vw, 104px) 0 64px;
+  position: relative;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: center;
+}
+.hero h1 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(2.3rem, 6.6vw, 3.9rem);
+  line-height: 1.14;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 20px 0 0;
+}
+.hero h1 .grad {
+  background: linear-gradient(120deg, #aee0ff 0%, var(--accent) 45%, var(--accent-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero p.sub {
+  color: var(--muted);
+  font-size: 1.1rem;
+  margin: 22px 0 30px;
+  max-width: 42ch;
+}
+.hero-cta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-note {
+  margin-top: 16px;
+  color: var(--muted-2);
+  font-size: 0.85rem;
+}
+
+/* ヒーローの実演カード（話す→登録の瞬間） */
+.demo-card {
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.demo-card::after {
+  content: "";
+  position: absolute;
+  inset: -40% -10% auto auto;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(circle, rgba(108, 193, 255, 0.25), transparent 70%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+.demo-mic {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.demo-mic .pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--ring);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+.demo-said {
+  font-size: 1.15rem;
+  margin: 14px 0 18px;
+  color: var(--text);
+}
+.demo-arrow {
+  text-align: center;
+  color: var(--muted-2);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  margin: 6px 0;
+}
+.event-chip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border-strong);
+}
+.event-chip .when {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--accent);
+  line-height: 1.1;
+  text-align: center;
+  min-width: 58px;
+}
+.event-chip .when small {
+  display: block;
+  font-size: 0.66rem;
+  color: var(--muted-2);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+.event-chip .what {
+  font-weight: 600;
+}
+.event-chip .what small {
+  display: block;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.event-chip .check {
+  margin-left: auto;
+  color: var(--ok);
+  font-size: 1.1rem;
+}
+
+/* ---- 入力方法 3つ ---- */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 40px;
+}
+.feature {
+  padding: 26px 22px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.feature:hover {
+  transform: translateY(-4px);
+  border-color: var(--glass-border-strong);
+}
+.feature .ico {
+  font-size: 1.9rem;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: var(--accent-soft);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 16px;
+}
+.feature h3 {
+  font-size: 1.12rem;
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+.feature p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+/* ---- カレンダー3強 ---- */
+.cal-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+.cal-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  font-weight: 600;
+}
+.cal-pill .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ---- プライバシー ---- */
+.privacy-card {
+  padding: 36px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 28px;
+}
+.privacy-card .shield {
+  font-size: 2.4rem;
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  border: 1px solid var(--glass-border);
+}
+.privacy-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.privacy-list li {
+  color: var(--muted);
+  padding-left: 26px;
+  position: relative;
+}
+.privacy-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--ok);
+  font-weight: 700;
+}
+
+/* ---- 料金 ---- */
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 36px;
+}
+.price {
+  padding: 30px 28px;
+}
+.price.pro {
+  border-color: var(--glass-border-strong);
+  box-shadow: var(--ring);
+  position: relative;
+}
+.price .tier {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+.price .amount {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+.price .amount small {
+  font-size: 0.9rem;
+  color: var(--muted-2);
+  font-weight: 500;
+}
+.price ul {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.price ul li {
+  color: var(--muted);
+  padding-left: 24px;
+  position: relative;
+  font-size: 0.94rem;
+}
+.price ul li::before {
+  content: "•";
+  position: absolute;
+  left: 4px;
+  color: var(--accent);
+}
+.badge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---- 最終CTA ---- */
+.final {
+  text-align: center;
+  padding: 96px 0;
+}
+.final h2 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 14px 0 22px;
+}
+
+/* ---- フッター ---- */
+.footer {
+  border-top: 1px solid var(--glass-border);
+  padding: 40px 0;
+  color: var(--muted-2);
+  font-size: 0.88rem;
+}
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer a:hover {
+  color: var(--text);
+}
+.footer-links {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* ---- 法務ページ（プライバシー/利用規約） ---- */
+.legal {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+  position: relative;
+  z-index: 1;
+}
+.legal h1 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.legal .updated {
+  color: var(--muted-2);
+  font-size: 0.85rem;
+  margin-bottom: 36px;
+}
+.legal h2 {
+  font-size: 1.2rem;
+  margin: 34px 0 10px;
+  font-weight: 700;
+}
+.legal p,
+.legal li {
+  color: var(--muted);
+}
+.legal ul {
+  padding-left: 20px;
+}
+.legal a {
+  color: var(--accent);
+}
+.legal .back {
+  display: inline-block;
+  margin-bottom: 28px;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+/* ---- 入場アニメ（控えめ・1回） ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* ---- レスポンシブ ---- */
+@media (max-width: 860px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 34px; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .price-grid { grid-template-columns: 1fr; }
+  .privacy-card { grid-template-columns: 1fr; }
+  .section { padding: 64px 0; }
 }
