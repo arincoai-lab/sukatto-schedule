@@ -21,13 +21,12 @@ rt-ai-lab.com のDNSに登録。
 - `NEXT_PUBLIC_SITE_URL` = `https://sukatto.rt-ai-lab.com`
 - `NEXT_PUBLIC_APP_URL` = `https://app.sukatto.rt-ai-lab.com`
 - `NEXT_PUBLIC_CONTACT_EMAIL` = 問い合わせ用メール（既定: arincoai@…）
-- `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` = `sukatto.rt-ai-lab.com`（アナリティクス有効化時のみ。未設定なら計測スクリプトは読み込まれない）
 
 **アプリ（schedule / Vite）**
 - `GUMROAD_PRODUCT_ID` = Gumroad商品のproduct_id（ライセンス検証用・サーバー側のみ）
 - `VITE_PRO_PURCHASE_URL` = Gumroad商品ページのURL（「Proにする」ボタンの遷移先）
 
-> アナリティクスをアプリ側でも使う場合は `schedule/index.html` に Plausible スクリプトを足す（`util/analytics.ts` の `track()` が自動で送信する）。
+> アナリティクスは **Vercel Web Analytics** を採用済み（Cookie不要・env変数不要）。LP（`app/layout.tsx` の `<Analytics />`）とアプリ（`schedule/src/main.tsx` の `inject()`）の両方でコード組み込み済みで、`util/analytics.ts` の `track()` がカスタムイベントを送る。有効化は各Vercelプロジェクトの **Analytics タブ → Enable** を押すだけ。
 
 ## 3. Google OAuth（一般公開の最大の長期ゲート）
 アプリは `calendar.events`（sensitive scope）を使うため、テストユーザー以外に公開するには
