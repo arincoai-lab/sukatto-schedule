@@ -29,8 +29,15 @@ rt-ai-lab.com のDNSに登録。
 > アナリティクスは **Vercel Web Analytics** を採用済み（Cookie不要・env変数不要）。LP（`app/layout.tsx` の `<Analytics />`）とアプリ（`schedule/src/main.tsx` の `inject()`）の両方でコード組み込み済みで、`util/analytics.ts` の `track()` がカスタムイベントを送る。有効化は各Vercelプロジェクトの **Analytics タブ → Enable** を押すだけ。
 
 ## 3. Google OAuth（一般公開の最大の長期ゲート）
-アプリは `calendar.events`（sensitive scope）を使うため、テストユーザー以外に公開するには
+アプリは sensitive scope を使うため、テストユーザー以外に公開するには
 **Google の審査（verification）が必要**。数日〜数週かかるので早めに着手。
+
+**要求スコープ（必要最小限。実装は `schedule/src/calendar/google-auth.ts`）**
+- `https://www.googleapis.com/auth/calendar.events` — 予定の作成/更新/削除/取得（主目的）
+- `https://www.googleapis.com/auth/calendar.calendarlist.readonly` — 書き込み先カレンダー選択用の一覧を読み取り専用で取得
+
+> フルの `auth/calendar`（読み書き全権限）は使わない。審査では「なぜそのスコープが必要か」を必ず問われるため、上記の最小構成で正当化するのが通りやすい。Console の登録スコープも必ずこの2つに揃えること。
+
 - Google Cloud Console → OAuth同意画面:
   - アプリのホームページ = `https://sukatto.rt-ai-lab.com`
   - プライバシーポリシー = `https://sukatto.rt-ai-lab.com/privacy`
@@ -39,6 +46,11 @@ rt-ai-lab.com のDNSに登録。
 - 「承認済みのJavaScript生成元」に `https://app.sukatto.rt-ai-lab.com` を追加。
 - 同意画面を「本番」に切替 → 審査を申請（スコープの正当化・デモ動画を提出）。
 - 審査完了までは「テスト中」のままテストユーザー枠でソフトローンチ可能。
+
+### スコープ正当化テキスト（審査フォーム貼り付け用・たたき台）
+- **calendar.events**: 「ユーザーが音声/テキストで入力した予定を、本人のGoogleカレンダーにイベントとして作成・更新・削除します。本アプリの中核機能であり、イベント単位の読み書きのみで完結します。」
+- **calendar.calendarlist.readonly**: 「ユーザーが『どのカレンダーに登録するか』を選べるよう、保有カレンダーの一覧（名称とID）を読み取り専用で取得します。予定の内容は読み取りません。」
+- デモ動画には: 同意画面 → 「明日15時 歯医者」等の入力 → 対象カレンダー選択 → 実際に登録される様子、を15〜60秒で収める。
 
 ## 4. 買い切りPro（Gumroad）
 1. Gumroad で商品を作成（応援価格 ¥500〜1,500、**ライセンスキー発行をON**）。

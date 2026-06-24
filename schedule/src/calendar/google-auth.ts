@@ -2,7 +2,14 @@
 // 公開クライアントIDのみ使用し、秘密鍵・バックエンドは不要。トークンはメモリ保持。
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
-const SCOPE = "https://www.googleapis.com/auth/calendar";
+// 必要最小限のスコープのみ要求する（OAuth審査の通過性とユーザー信頼のため）。
+// - calendar.events: 予定の作成/更新/削除/取得（このアプリの主目的）
+// - calendar.calendarlist.readonly: 書き込み先カレンダー選択用の一覧を読み取り専用で取得
+// フルの auth/calendar（読み書き全権限）は過剰なため使わない。
+const SCOPE = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+].join(" ");
 
 interface TokenResponse {
   access_token: string;
