@@ -13,7 +13,7 @@ const display = Bricolage_Grotesque({
 });
 
 const description =
-  "話す・撮る・打つだけで、Google・Outlook・iCloudカレンダーに1タップ登録。端末内AIで処理し、予定をサーバーに保存しない、プライバシー特化の無料スケジュール入力アプリ。";
+  "話す・撮る・打つだけで、Google・Outlook・iCloudカレンダーに1タップ登録。端末内AIで解析し、予定をサーバーに保存しない、プライバシー特化の無料スケジュール入力アプリ。";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

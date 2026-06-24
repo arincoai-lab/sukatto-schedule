@@ -316,7 +316,7 @@ export default function SettingsPanel({
 
         <div className="section-label">統合閲覧する外部カレンダー（ICS購読）</div>
         <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 10px" }}>
-          Outlook/TimeTree等の「公開URL(.ics)」を貼ると、ここで予定を閲覧できます（読み取り専用）。
+          Outlook等の「公開URL(.ics)」を貼ると、ここで予定を閲覧できます（読み取り専用）。
         </p>
         <IcsSourcesEditor
           sources={draft.icsSources}

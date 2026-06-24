@@ -1,7 +1,7 @@
 import ICAL from "ical.js";
 import type { CalendarEvent } from "../types";
 
-// 外部カレンダー(Outlook/TimeTree等)のICSを極小プロキシ経由で取得し、
+// 外部カレンダー(Outlook等、公開.ics対応)のICSを極小プロキシ経由で取得し、
 // 表示期間内のイベント（繰り返し展開含む）に変換する。読み取り専用。
 
 export interface IcsSource {
