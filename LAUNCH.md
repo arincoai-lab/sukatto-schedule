@@ -1,6 +1,6 @@
 # スカッと予定 — ローンチ進捗 & 次にやること
 
-> このファイルは作業のハンドオフ。次回はここを見れば続きから始められる。最終更新: 2026-06-24
+> このファイルは作業のハンドオフ。次回はここを見れば続きから始められる。最終更新: 2026-06-25
 
 ## 主要URL / プロジェクト
 - **LP**: https://sukatto.rt-ai-lab.com （Vercelプロジェクト `sukatto-schedule-grin` / root Next.js）
@@ -12,7 +12,7 @@
 ## ✅ 完了済み（本番反映済み）
 - コード: 入力特化UX（入力を下部集約・カレンダー上・接続中チップ・クイック登録横スクロール）、テンプレ編集＋作成/登録時の開始/終了調整、モーダルの下付けボトムシート、買い切りPro土台、LP、プライバシー/利用規約（Google Limited Use込み）
 - ドメイン: LP・アプリともサブドメイン割当・SSL有効
-- Google OAuth: **本番公開（In production）** ＝誰でも利用可（審査前は「未確認」警告＋〜100人枠）。スコープ=`https://www.googleapis.com/auth/calendar`
+- Google OAuth: **本番公開（In production）** ＝誰でも利用可（審査前は「未確認」警告＋〜100人枠）。スコープ=**最小化済み**（`calendar.events` + `calendar.calendarlist.readonly`。フル `auth/calendar` は廃止。実装 `schedule/src/calendar/google-auth.ts`、Console登録も同じ2つ）
 - Web Analytics: LP・アプリ両方で稼働（PV＋カスタムイベント）
 
 ## ⏳ 次にやること（優先順）
@@ -33,10 +33,14 @@
   the app parses the date, time and title on the user's device and writes the event to
   the user's Google Calendar.
 
-  We request https://www.googleapis.com/auth/calendar because the app:
-  - reads the user's calendar list so they can choose which calendar(s) to write to;
-  - reads upcoming events to show an agenda/month view alongside newly added events;
-  - creates, edits and deletes the events the user chooses to register.
+  We request the minimum scopes needed:
+  - https://www.googleapis.com/auth/calendar.events — to create, edit, delete and read
+    the events the user chooses to register, and to show an agenda/month view alongside
+    them. This is the core function of the app.
+  - https://www.googleapis.com/auth/calendar.calendarlist.readonly — read-only, so the
+    user can pick which calendar to write to. We only read calendar names/ids, never
+    event contents from this scope.
+  We deliberately avoid the broad https://www.googleapis.com/auth/calendar scope.
 
   All speech/photo/text parsing runs on-device. We do not store calendar data on our
   servers, do not use it for advertising, and do not share it with third parties, in
