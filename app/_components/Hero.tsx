@@ -24,7 +24,7 @@ export default function Hero() {
             </a>
           </div>
           <p className="hero-note">
-            インストール不要・端末内AIで処理・予定はサーバーに保存しません。
+            インストール不要・端末内AIで解析・予定はサーバーに保存しません。
           </p>
         </div>
 

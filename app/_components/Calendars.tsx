@@ -1,4 +1,5 @@
 // カレンダー3強（Google/Outlook/iCloud）への同時登録 + 外部ICS閲覧。
+// 注: 外部ICS閲覧は「公開URL(.ics)を発行できるカレンダー」が対象。TimeTreeは.ics非対応のため例示しない。
 
 const CALENDARS = [
   { name: "Google カレンダー", color: "#4285F4", write: true },
@@ -14,7 +15,7 @@ export default function Calendars() {
         <h2 className="section-title">3つのカレンダーに、同時登録。</h2>
         <p className="lead">
           仕事はOutlook、家族はGoogle、個人はiCloud——分かれていても大丈夫。選んだカレンダーすべてに一度で入ります。
-          TimeTreeなど外部カレンダーは公開URL（.ics）で閲覧もできます。
+          Outlookなど公開URL（.ics）に対応した外部カレンダーは、閲覧もできます。
         </p>
         <div className="cal-band">
           {CALENDARS.map((c) => (
