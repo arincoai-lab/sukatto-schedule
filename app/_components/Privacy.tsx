@@ -14,7 +14,7 @@ export default function Privacy() {
           </div>
           <div>
             <p className="lead" style={{ marginTop: 0 }}>
-              写真とテキストの解析はあなたの端末の中で行います。スカッと予定は予定の内容を保存するサーバーを持ちません。
+              写真とテキストの解析はあなたの端末の中で行います。Skatto Schedular は予定の内容を保存するサーバーを持ちません。
             </p>
             <ul className="privacy-list">
               <li>写真・テキストの解析は端末内のAIで完結（音声はブラウザ標準機能を利用）</li>

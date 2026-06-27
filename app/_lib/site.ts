@@ -12,5 +12,7 @@ export const APP_URL =
 export const CONTACT_EMAIL =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "arincoai@dontsleep-man-blog.com";
 
-export const SITE_NAME = "スカッと予定";
+// アプリ名はOAuth同意画面（Google Auth Platform のブランディング）と完全一致させる。
+// 不一致だとブランドの取り扱いガイドライン審査で差し戻される。
+export const SITE_NAME = "Skatto Schedular";
 export const SITE_TAGLINE = "話す・撮る・打つだけ。1タップでカレンダー登録。";
