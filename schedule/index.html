@@ -14,6 +14,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      OAuth審査のホームページ要件対策。Googleの自動チェッカーはJSを実行せず生HTMLしか
+      読まないため、SPAの #root が空だと「homepageにプライバシーポリシーへのリンクが無い」
+      と判定される。実ユーザー(JS有効)には表示されない noscript に、同意画面登録と一致する
+      絶対URLのリンクを置いてクローラーに必ず検出させる。
+    -->
+    <noscript>
+      <footer>
+        <p>スカッと予定 — 話す・撮る・打つだけで、Google・Outlook・iCloudカレンダーに1タップ登録。</p>
+        <a href="https://sukatto.rt-ai-lab.com/privacy">プライバシーポリシー</a>
+        <a href="https://sukatto.rt-ai-lab.com/terms">利用規約</a>
+        <a href="https://sukatto.rt-ai-lab.com/">ホームページ</a>
+      </footer>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
