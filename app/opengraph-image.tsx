@@ -6,7 +6,7 @@ import { ImageResponse } from "next/og";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "スカッと予定 — 話す・撮る・打つだけ。1タップでカレンダー登録。";
+export const alt = "Skatto Schedular — 話す・撮る・打つだけ。1タップでカレンダー登録。";
 
 // css2 から TrueType の URL を取り出して取得（古いUAでttfを得る）。失敗時は null。
 async function loadJpFont(text: string): Promise<ArrayBuffer | null> {
@@ -25,11 +25,12 @@ async function loadJpFont(text: string): Promise<ArrayBuffer | null> {
 }
 
 export default async function OgImage() {
-  const jpText = "スカッと予定話す撮る打つだけで1タップカレンダー登録音声写真手入力";
+  // ブランド名(Skatto Schedular)の欧文字もサブセットに含める（Noto Sans JPはラテン字も持つ）。
+  const jpText = "スカッと予定話す撮る打つだけで1タップカレンダー登録音声写真手入力Skatto Schedular";
   const font = await loadJpFont(jpText);
   const hasJp = font !== null;
 
-  const title = hasJp ? "スカッと予定" : "Sukatto";
+  const title = "Skatto Schedular";
   const tagline = hasJp
     ? "話す・撮る・打つだけ。1タップでカレンダー登録。"
     : "Speak it. It's on your calendar.";
