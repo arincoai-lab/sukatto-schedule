@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { CalendarEvent } from "../types";
 import { formatTime } from "../util/datetime";
 
@@ -8,6 +8,8 @@ interface Props {
   events: CalendarEvent[];
   monthCursor: Date; // 表示中の月（その月の任意の日）
   loading: boolean;
+  selectedKey: string; // 選択中の日付(YYYY-MM-DD)。クイック登録の既定日にも使う
+  onSelectDay: (key: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
@@ -37,13 +39,14 @@ export default function MonthView({
   events,
   monthCursor,
   loading,
+  selectedKey,
+  onSelectDay,
   onPrevMonth,
   onNextMonth,
   onToday,
   onSelectEvent,
 }: Props) {
   const todayKey = ymd(new Date());
-  const [selectedKey, setSelectedKey] = useState<string>(todayKey);
 
   // 日付キー → イベント配列
   const byDate = useMemo(() => {
@@ -94,7 +97,7 @@ export default function MonthView({
             <button
               key={key}
               className={`day-cell${inMonth ? "" : " dim"}${isToday ? " today" : ""}${isSelected ? " selected" : ""}`}
-              onClick={() => setSelectedKey(key)}
+              onClick={() => onSelectDay(key)}
             >
               <span className="day-num">{d.getDate()}</span>
               <span className="day-dots">

@@ -69,6 +69,12 @@ export default function App() {
   const [monthCursor, setMonthCursor] = useState<Date>(() => new Date());
   const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
   const [monthLoading, setMonthLoading] = useState(false);
+  // カレンダーで選択中の日付(YYYY-MM-DD)。クイック登録の既定日として共有する。
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  });
 
   const [modal, setModal] = useState<Modal>("none");
   // 無料上限に達したときの買い切りPro案内（reason=どの機能で当たったか）
@@ -637,6 +643,8 @@ export default function App() {
               events={monthEvents}
               monthCursor={monthCursor}
               loading={monthLoading}
+              selectedKey={selectedDate}
+              onSelectDay={setSelectedDate}
               onPrevMonth={() =>
                 setMonthCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))
               }
@@ -652,7 +660,11 @@ export default function App() {
 
       {/* 入力ゾーン: クイック登録ストリップ + 話す/撮る/打つ を画面下にまとめて親指圏に。 */}
       <div className="input-zone">
-        <TemplateBar templates={settings.templates} onPick={pickTemplate} />
+        <TemplateBar
+          templates={settings.templates}
+          defaultDate={selectedDate}
+          onPick={pickTemplate}
+        />
         <nav className="input-dock">
           <button
             className="dock-btn"
