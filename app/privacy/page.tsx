@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         ← トップへ戻る
       </Link>
       <h1>プライバシーポリシー</h1>
-      <p className="updated">最終更新日: 2026年6月22日</p>
+      <p className="updated">最終更新日: 2026年7月1日</p>
 
       <p>
         {SITE_NAME}（以下「本アプリ」）は、利用者のプライバシーを最優先に設計されています。
@@ -55,29 +55,94 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
-      <h2>3. Google ユーザーデータの取り扱い（Limited Use）</h2>
+      <h2>3. Google ユーザーデータの取り扱い</h2>
       <p>
-        本アプリが Google API から取得する情報（Google カレンダーの予定など）の使用および第三者への提供は、
-        Google API Services User Data Policy（
+        本アプリは、Google カレンダーへの予定の登録・表示のために Google のユーザーデータへアクセスします。
+        取得したデータの利用・保存・共有は、
         <a
           href="https://developers.google.com/terms/api-services-user-data-policy"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Limited Use の要件を含む
+          Google API Services User Data Policy
         </a>
-        ）に準拠します。具体的には:
+        （Limited Use の要件を含む）に準拠します。以下に、アクセスするデータ・利用目的・共有・保存・保持と削除を具体的に開示します。
+      </p>
+
+      <h3>3-1. アクセスするデータ（Data Accessed）</h3>
+      <p>
+        本アプリは、利用者が Google アカウントでの接続を許可した場合にのみ、Google カレンダー スコープ
+        （<code>https://www.googleapis.com/auth/calendar</code>）を通じて次のデータにアクセスします。
       </p>
       <ul>
         <li>
-          Google カレンダーへのアクセスは、利用者が選んだ予定の作成・閲覧・編集・削除を行う目的にのみ使用します。
+          カレンダー一覧（各カレンダーの ID・名称・主カレンダー判定）。書き込み先を選択いただくために使用します。
         </li>
         <li>
-          取得した Google ユーザーデータは利用者の端末内でのみ処理し、当方のサーバーに保存・送信しません。
+          予定（イベント）の内容。タイトル、開始・終了日時、終日フラグ、場所、説明（メモ）、リマインダー設定を含みます。
         </li>
-        <li>Google ユーザーデータを広告目的で使用したり、第三者に販売・提供したりすることはありません。</li>
+      </ul>
+      <p>
+        Gmail・連絡先・Google ドライブなど、Google カレンダー以外の Google ユーザーデータにはアクセスしません。
+      </p>
+
+      <h3>3-2. データの利用目的（Data Usage）</h3>
+      <ul>
+        <li>利用者が選択したカレンダーに、利用者が確定した予定を作成・更新・削除するため。</li>
+        <li>アジェンダ表示・月表示のために、既存の予定を読み取って画面に表示するため。</li>
+        <li>書き込み先の候補を提示するために、カレンダー一覧を取得するため。</li>
+      </ul>
+      <p>
+        取得した Google カレンダーのデータは、利用者の端末（ブラウザ）内でのみ処理し、当方のサーバーへ送信・保存しません。
+        写真の文字認識（OCR）や文章からの日時抽出（AI）も端末内で完結するため、Google カレンダーのデータが解析のために外部へ送られることはありません。
+      </p>
+
+      <h3>3-3. データの共有（Data Sharing）</h3>
+      <ul>
+        <li>Google ユーザーデータを第三者へ販売・提供・共有することはありません。</li>
+        <li>広告・ターゲティング・与信判断、および AI/ML モデルの学習などの目的に使用することはありません。</li>
         <li>
-          人による Google ユーザーデータの読み取りは行いません（法令遵守、セキュリティ目的、利用者の明示的な同意がある場合などを除く）。
+          データのやり取りは、利用者の端末と Google の API（<code>www.googleapis.com</code>）との直接通信のみで行われます。
+          当方が運用するサーバーを Google カレンダーのデータが経由することはありません。
+        </li>
+        <li>
+          人（当方の担当者等）が Google ユーザーデータを閲覧することはありません（法令遵守、セキュリティ対応、利用者の明示的な同意がある場合を除く）。
+        </li>
+      </ul>
+
+      <h3>3-4. 保存とセキュリティ（Data Storage &amp; Protection）</h3>
+      <ul>
+        <li>
+          Google カレンダーのデータおよびアクセストークンを保存するサーバー・データベースを、当方は保有しません。
+        </li>
+        <li>
+          OAuth のアクセストークンは端末のメモリ上にのみ一時的に保持され、ページを閉じる／サインアウトすると破棄されます。ディスクやローカルストレージには保存しません。
+        </li>
+        <li>Google API との通信はすべて HTTPS（TLS）で暗号化されます。</li>
+      </ul>
+
+      <h3>3-5. 保持期間と削除（Data Retention &amp; Deletion）</h3>
+      <ul>
+        <li>
+          当方は Google ユーザーデータを保持しません。アクセストークンはセッション終了時（ページを閉じる・サインアウト）に消滅します。
+        </li>
+        <li>
+          本アプリの連携はいつでも取り消せます。アプリ内でサインアウトするか、Google アカウントの
+          <a
+            href="https://myaccount.google.com/permissions"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            サードパーティ アクセス設定
+          </a>
+          から本アプリへのアクセス権を解除してください。
+        </li>
+        <li>
+          カレンダーに登録済みの予定は、Google カレンダー上、または本アプリの編集・削除機能からいつでも削除できます。
+        </li>
+        <li>
+          データの取り扱いに関するご要望・削除のお問い合わせは{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> までご連絡ください。
         </li>
       </ul>
 
