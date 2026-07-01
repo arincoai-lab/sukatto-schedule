@@ -7,6 +7,8 @@ import { durationMinBetween, endTime } from "./time";
 
 interface Props {
   templates: EventTemplate[];
+  // カレンダーで選択中の日付(YYYY-MM-DD)。登録ダイアログの既定日に使う。
+  defaultDate: string;
   onPick: (
     template: EventTemplate,
     dateStr: string,
@@ -21,16 +23,16 @@ function todayStr(offsetDays = 0): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export default function TemplateBar({ templates, onPick }: Props) {
+export default function TemplateBar({ templates, defaultDate, onPick }: Props) {
   const [picking, setPicking] = useState<EventTemplate | null>(null);
-  const [date, setDate] = useState(todayStr());
+  const [date, setDate] = useState(defaultDate);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:00");
 
   if (templates.length === 0) return null;
 
   const open = (t: EventTemplate) => {
-    setDate(todayStr());
+    setDate(defaultDate);
     if (!t.allDay) {
       const s = t.startTime ?? "09:00";
       setStart(s);
