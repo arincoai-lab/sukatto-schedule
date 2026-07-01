@@ -578,9 +578,22 @@ h2.section-title {
   margin: 34px 0 10px;
   font-weight: 700;
 }
+.legal h3 {
+  font-size: 1.02rem;
+  margin: 22px 0 8px;
+  font-weight: 700;
+}
 .legal p,
 .legal li {
   color: var(--muted);
+}
+.legal code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(127, 127, 127, 0.16);
+  padding: 1px 6px;
+  border-radius: 5px;
+  word-break: break-all;
 }
 .legal ul {
   padding-left: 20px;
