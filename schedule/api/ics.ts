@@ -73,6 +73,7 @@ async function fetchIcs(rawUrl: string | null): Promise<IcsFetchResult> {
 
 interface MinimalReq {
   query: Record<string, string | string[] | undefined>;
+  headers?: Record<string, string | string[] | undefined>;
 }
 interface MinimalRes {
   status: (code: number) => MinimalRes;
@@ -81,7 +82,26 @@ interface MinimalRes {
   json: (body: unknown) => void;
 }
 
+function firstHeader(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+// 他サイトのブラウザからの踏み台利用を防ぐ。Origin付きリクエストは自ホスト発のみ許可
+// （同一オリジンGETは通常Originを送らないため absent は許容）。
+function isSameOrigin(origin: string | undefined, host: string | undefined): boolean {
+  if (!origin) return true;
+  try {
+    return Boolean(host) && new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: MinimalReq, res: MinimalRes): Promise<void> {
+  if (!isSameOrigin(firstHeader(req.headers?.origin), firstHeader(req.headers?.host))) {
+    res.status(403).json({ error: "許可されないオリジンです" });
+    return;
+  }
   const q = req.query.url;
   const url = Array.isArray(q) ? q[0] : q ?? null;
 

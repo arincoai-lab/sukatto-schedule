@@ -106,6 +106,7 @@ async function forwardCaldav(reqInput: ProxyReq): Promise<ProxyResult> {
 interface MinimalReq {
   method?: string;
   body?: unknown;
+  headers?: Record<string, string | string[] | undefined>;
 }
 interface MinimalRes {
   status: (code: number) => MinimalRes;
@@ -113,9 +114,28 @@ interface MinimalRes {
   json: (body: unknown) => void;
 }
 
+function firstHeader(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+// 他サイトのブラウザからの踏み台利用を防ぐ。Origin付きリクエストは自ホスト発のみ許可
+// （Origin無し=同一オリジンGET/非ブラウザは許容。curl等は元より防御対象外）。
+function isSameOrigin(origin: string | undefined, host: string | undefined): boolean {
+  if (!origin) return true;
+  try {
+    return Boolean(host) && new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req: MinimalReq, res: MinimalRes): Promise<void> {
   if ((req.method || "").toUpperCase() !== "POST") {
     res.status(405).json({ error: "POSTのみ受け付けます" });
+    return;
+  }
+  if (!isSameOrigin(firstHeader(req.headers?.origin), firstHeader(req.headers?.host))) {
+    res.status(403).json({ error: "許可されないオリジンです" });
     return;
   }
   let payload: ProxyReq;

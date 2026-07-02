@@ -23,12 +23,18 @@ function toIsoDate(date: Date): string {
 // 相対週/月の語（chronoのマッチに含まれず取り残されやすい）
 const ORPHAN_TEMPORAL = /(先々週|再来週|今週|来週|先週|先々月|再来月|今月|来月|先月)/g;
 
+// ユーザー入力由来の文字列をRegExpに埋め込む前に特殊文字を無害化する
+// （例: 場所「カフェ(2F」の "(" がSyntaxErrorになり解析全体が落ちるのを防ぐ）
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // 抽出した日時表現と場所を除去してタイトルを作る
 function deriveTitle(text: string, matchedText: string, location?: string): string {
   let title = text.replace(matchedText, " ");
   if (location) {
     // @渋谷 / ＠渋谷 / 場所文字列そのものを除去
-    title = title.replace(new RegExp(`[@＠]?\\s*${location}`, "g"), " ");
+    title = title.replace(new RegExp(`[@＠]?\\s*${escapeRegExp(location)}`, "g"), " ");
   }
   title = title
     .replace(ORPHAN_TEMPORAL, " ")

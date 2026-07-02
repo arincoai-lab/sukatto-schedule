@@ -38,12 +38,25 @@ export async function ensureEngine(
   return enginePromise;
 }
 
+// 現在時刻はローカル時刻＋実オフセットで渡す。toISOString()はUTCのため、
+// JST深夜帯に「明日」等の相対表現が1日ずれる（例: 23:30が前日14:30Z扱い）。
+function toLocalIso(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const offMin = -d.getTimezoneOffset();
+  const sign = offMin >= 0 ? "+" : "-";
+  const abs = Math.abs(offMin);
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+  );
+}
+
 function buildPrompt(text: string, now: Date): string {
-  const iso = now.toISOString();
+  const iso = toLocalIso(now);
   const weekday = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
   return [
     "あなたは日本語のスケジュール抽出器です。",
-    `現在の日時は ${iso}（${weekday}曜日, タイムゾーン JST/+09:00）です。`,
+    `現在の日時は ${iso}（${weekday}曜日）です。`,
     "次の入力文から予定を抽出し、JSONのみを出力してください。説明文は禁止。",
     "出力スキーマ: {\"events\": [{\"title\": string, \"start\": ISO8601文字列(+09:00), \"end\"?: ISO8601, \"allDay\"?: boolean, \"location\"?: string, \"notes\"?: string}]}",
     "規則: 相対表現（明日・来週火曜など）は現在日時を基準に絶対日時へ変換。時刻が無ければ allDay=true。終了時刻が無ければ省略可。予定が複数あれば配列に複数入れる。",
