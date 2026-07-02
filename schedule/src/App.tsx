@@ -2,40 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import type { ParseResult, ParsedEvent, CalendarEvent } from "./types";
 import { loadSettings, saveSettings, type AppSettings } from "./store/settings";
 import { parseEvent } from "./parse";
+import { getAccessToken, hasValidToken, requestToken, signOut } from "./calendar/google-auth";
 import {
-  ensureToken,
-  getAccessToken,
-  hasValidToken,
-  requestToken,
-  signOut,
-} from "./calendar/google-auth";
-import {
-  insertEvent,
-  listEventsRange,
-  updateEvent,
-  deleteEvent,
-} from "./calendar/google-events";
-import {
-  ensureOutlookToken,
   getOutlookAccessToken,
   hasOutlookValidToken,
   requestOutlookToken,
   outlookSignOut,
 } from "./calendar/outlook-auth";
+import { hasIcloudCred, clearIcloudCred } from "./calendar/icloud-cred";
 import {
-  insertOutlookEvent,
-  listOutlookEventsRange,
-  updateOutlookEvent,
-  deleteOutlookEvent,
-} from "./calendar/outlook-events";
-import { fetchIcsSource } from "./calendar/ics";
-import { loadIcloudCred, hasIcloudCred, clearIcloudCred } from "./calendar/icloud-cred";
-import {
-  insertIcloudEvent,
-  updateIcloudEvent,
-  deleteIcloudEvent,
-  listIcloudEventsRange,
-} from "./calendar/caldav-events";
+  prepareWriteSinks,
+  updateProviderEvent,
+  deleteProviderEvent,
+  loadEventsRange,
+} from "./calendar/providers";
 import AgendaView from "./calendar/AgendaView";
 import MonthView from "./calendar/MonthView";
 import EventConfirm from "./confirm/EventConfirm";
@@ -44,6 +24,7 @@ import QuickAdd from "./input/QuickAdd";
 import VoiceCapture, { isVoiceSupported } from "./input/VoiceCapture";
 import UpgradePrompt from "./pro/UpgradePrompt";
 import { canUseVoice, recordVoiceUse } from "./store/pro";
+import { revalidateProLicense } from "./store/license";
 import { track, EVENTS } from "./util/analytics";
 import PhotoCapture from "./input/PhotoCapture";
 import SettingsPanel from "./SettingsPanel";
@@ -105,82 +86,18 @@ export default function App() {
     [settings.defaultReminderMin],
   );
 
-  // Google + ICS を指定期間でまとめて取得（リスト/月表示で共用）
+  // 全ソース(Google/Outlook/iCloud/ICS)を指定期間でまとめて取得（リスト/月表示で共用）。
+  // 実体は calendar/providers.ts。ここでは接続状態フラグへの反映のみ行う。
   const loadRange = useCallback(
     async (start: Date, end: Date) => {
-      const token = getAccessToken();
-      const oToken = getOutlookAccessToken();
-      const all: CalendarEvent[] = [];
-      const warns: string[] = [];
-      if (token) {
-        // 書き込み先(複数)のすべてのGoogleカレンダーから取得
-        const gResults = await Promise.allSettled(
-          settings.writeCalendarIds.map((cid) => listEventsRange(token, cid, start, end)),
-        );
-        gResults.forEach((r, i) => {
-          if (r.status === "fulfilled") {
-            all.push(
-              ...r.value.map((e) => ({
-                ...e,
-                calendarSummary: e.calendarSummary ?? settings.writeCalendarIds[i],
-              })),
-            );
-          } else {
-            warns.push(`Googleカレンダー「${settings.writeCalendarIds[i]}」の取得に失敗`);
-          }
-        });
-        setConnected(true);
-      }
-      // Outlook 側も並列取得
-      if (oToken && settings.outlookWriteCalendarIds.length > 0) {
-        const oResults = await Promise.allSettled(
-          settings.outlookWriteCalendarIds.map((cid) =>
-            listOutlookEventsRange(oToken, cid, start, end),
-          ),
-        );
-        oResults.forEach((r, i) => {
-          if (r.status === "fulfilled") {
-            all.push(
-              ...r.value.map((e) => ({
-                ...e,
-                calendarSummary: e.calendarSummary ?? "Outlook",
-              })),
-            );
-          } else {
-            warns.push(`Outlookカレンダー「${settings.outlookWriteCalendarIds[i]}」の取得に失敗`);
-          }
-        });
-        setOutlookConnected(true);
-      }
-      // iCloud(CalDAV) も並列取得
-      const icloudCred = loadIcloudCred();
-      if (icloudCred && settings.icloudWriteCalendarUrls.length > 0) {
-        const calName = (url: string) =>
-          settings.icloudCalendars.find((c) => c.url === url)?.displayName ?? "iCloud";
-        const iResults = await Promise.allSettled(
-          settings.icloudWriteCalendarUrls.map((url) =>
-            listIcloudEventsRange(icloudCred, url, calName(url), start, end),
-          ),
-        );
-        iResults.forEach((r, i) => {
-          if (r.status === "fulfilled") all.push(...r.value);
-          else
-            warns.push(
-              `iCloudカレンダー「${settings.icloudCalendars[i]?.displayName ?? ""}」の取得に失敗`,
-            );
-        });
-        setIcloudConnected(true);
-      }
-      const results = await Promise.allSettled(
-        settings.icsSources.map((s) => fetchIcsSource(s, start, end)),
-      );
-      results.forEach((r, i) => {
-        if (r.status === "fulfilled") all.push(...r.value);
-        else warns.push(`「${settings.icsSources[i].label}」の取得に失敗しました`);
-      });
-      all.sort((a, b) => a.start.localeCompare(b.start));
-      return { events: all, warnings: warns };
+      const { events, warnings, active } = await loadEventsRange(settings, start, end);
+      if (active.google) setConnected(true);
+      if (active.outlook) setOutlookConnected(true);
+      if (active.icloud) setIcloudConnected(true);
+      return { events, warnings };
     },
+    // settingsオブジェクト全体でなく取得に影響するフィールドのみ依存（テーマ変更等での再取得を防ぐ）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       settings.writeCalendarIds,
       settings.outlookWriteCalendarIds,
@@ -261,6 +178,21 @@ export default function App() {
     track(EVENTS.appOpened);
   }, []);
 
+  // 起動時にProライセンスを定期再検証（返金・係争後にProが永続する問題への対策）。
+  // サーバーが明確に「無効」と答えた時だけ失効させる。オフライン等では維持（fail-open）。
+  useEffect(() => {
+    if (!loadSettings().isPro) return;
+    void revalidateProLicense().then((outcome) => {
+      if (outcome !== "revoke") return;
+      setSettings((s) => {
+        const next = { ...s, isPro: false };
+        saveSettings(next);
+        return next;
+      });
+      setError("Proライセンスが無効になったため、無料プランに切り替えました。設定からキーを再入力できます。");
+    });
+  }, []);
+
   // 月表示の時は表示月に応じて取得
   useEffect(() => {
     if (viewMode !== "month") return;
@@ -339,42 +271,17 @@ export default function App() {
     [settings.preferLLM, settings.defaultDurationMin, withDefaultReminder],
   );
 
-  // Google + Outlook の選択カレンダー全てへ同時登録し、表示を更新。
-  // 1つでも失敗があれば集約してエラーとして投げる（成功分はGoogle/Outlookに残る）。
+  // 選択中の全カレンダー(Google/Outlook/iCloud)へ同時登録し、表示を更新。
+  // 1つでも失敗があれば集約してエラーとして投げる（成功分は各カレンダーに残る）。
   const registerEvents = useCallback(
     async (events: ParsedEvent[]) => {
-      const gTargets = settings.writeCalendarIds.length > 0
-        ? settings.writeCalendarIds
-        : [settings.defaultCalendarId || "primary"];
-      const oTargets = settings.outlookWriteCalendarIds;
-      const wantOutlook = oTargets.length > 0 && settings.outlookClientId;
-      const iTargets = settings.icloudWriteCalendarUrls;
-      const icloudCred = iTargets.length > 0 ? loadIcloudCred() : null;
-
-      const gToken = await ensureToken(settings.googleClientId);
-      const oToken = wantOutlook
-        ? await ensureOutlookToken(settings.outlookClientId)
-        : null;
-
-      const icloudName = (url: string) =>
-        settings.icloudCalendars.find((c) => c.url === url)?.displayName ?? "iCloud";
-
+      const { sinks, active } = await prepareWriteSinks(settings);
       const failures: string[] = [];
       for (const ev of events) {
-        const ops: Promise<unknown>[] = [
-          ...gTargets.map((cid) => insertEvent(gToken, cid, ev)),
-          ...(oToken ? oTargets.map((cid) => insertOutlookEvent(oToken, cid, ev)) : []),
-          ...(icloudCred ? iTargets.map((url) => insertIcloudEvent(icloudCred, url, ev)) : []),
-        ];
-        const labels = [
-          ...gTargets.map((c) => `Google:${c}`),
-          ...(oToken ? oTargets.map((c) => `Outlook:${c.slice(0, 8)}`) : []),
-          ...(icloudCred ? iTargets.map((u) => `iCloud:${icloudName(u)}`) : []),
-        ];
-        const results = await Promise.allSettled(ops);
+        const results = await Promise.allSettled(sinks.map((s) => s.insert(ev)));
         results.forEach((r, i) => {
           if (r.status === "rejected") {
-            failures.push(`${ev.title} → ${labels[i]}: ${String(r.reason).slice(0, 80)}`);
+            failures.push(`${ev.title} → ${sinks[i].label}: ${String(r.reason).slice(0, 80)}`);
           }
         });
       }
@@ -382,11 +289,12 @@ export default function App() {
         throw new Error(`一部のカレンダー登録に失敗: ${failures.join("; ")}`);
       }
       setConnected(true);
-      if (wantOutlook) setOutlookConnected(true);
-      if (icloudCred) setIcloudConnected(true);
+      if (active.outlook) setOutlookConnected(true);
+      if (active.icloud) setIcloudConnected(true);
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       settings.googleClientId,
       settings.writeCalendarIds,
@@ -468,17 +376,8 @@ export default function App() {
     setEditBusy(true);
     setError(null);
     try {
-      if (editingProvider === "google") {
-        const token = await ensureToken(settings.googleClientId);
-        await updateEvent(token, editingCalendarId, editingId, updated);
-      } else if (editingProvider === "outlook") {
-        const token = await ensureOutlookToken(settings.outlookClientId);
-        await updateOutlookEvent(token, editingCalendarId, editingId, updated);
-      } else {
-        const cred = loadIcloudCred();
-        if (!cred) throw new Error("iCloud未接続です");
-        await updateIcloudEvent(cred, editingId, updated); // editingId = href
-      }
+      // 由来プロバイダへのルーティングは providers.ts に集約（iCloudのidはhref）
+      await updateProviderEvent(settings, editingProvider, editingCalendarId, editingId, updated);
       clearEditState();
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
@@ -494,17 +393,7 @@ export default function App() {
     setEditBusy(true);
     setError(null);
     try {
-      if (editingProvider === "google") {
-        const token = await ensureToken(settings.googleClientId);
-        await deleteEvent(token, editingCalendarId, editingId);
-      } else if (editingProvider === "outlook") {
-        const token = await ensureOutlookToken(settings.outlookClientId);
-        await deleteOutlookEvent(token, editingCalendarId, editingId);
-      } else {
-        const cred = loadIcloudCred();
-        if (!cred) throw new Error("iCloud未接続です");
-        await deleteIcloudEvent(cred, editingId); // editingId = href
-      }
+      await deleteProviderEvent(settings, editingProvider, editingCalendarId, editingId);
       clearEditState();
       await refreshAgenda();
       if (viewMode === "month") await refreshMonth();
