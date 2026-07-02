@@ -69,15 +69,22 @@ export function canAddTemplate(isPro: boolean, currentCount: number): boolean {
 export interface LicenseResult {
   valid: boolean;
   error?: string;
+  /**
+   * サーバーが明確に有効/無効を判定したか。
+   * false = 通信断・サーバー未設定(503)・Gumroad障害(502)等の不確定状態。
+   * 再検証で失効させてよいのは definitive && !valid の時だけ（fail-open）。
+   */
+  definitive: boolean;
 }
 
 /**
  * ライセンスキーを検証してProを解除できるか確認する。
  * 実際の検証は薄いサーバー関数 /api/license が行う（製品IDはサーバー側のみ）。
+ * サーバーはGumroadが明確に回答した時のみ HTTP 200 を返す（それ以外は400/502/503）。
  */
 export async function verifyLicense(licenseKey: string): Promise<LicenseResult> {
   const key = licenseKey.trim();
-  if (!key) return { valid: false, error: "ライセンスキーを入力してください" };
+  if (!key) return { valid: false, definitive: true, error: "ライセンスキーを入力してください" };
   try {
     const resp = await fetch("/api/license", {
       method: "POST",
@@ -86,10 +93,18 @@ export async function verifyLicense(licenseKey: string): Promise<LicenseResult> 
     });
     const data = (await resp.json()) as { valid?: boolean; error?: string };
     if (!resp.ok || !data.valid) {
-      return { valid: false, error: data.error ?? "ライセンスを確認できませんでした" };
+      return {
+        valid: false,
+        definitive: resp.status === 200,
+        error: data.error ?? "ライセンスを確認できませんでした",
+      };
     }
-    return { valid: true };
+    return { valid: true, definitive: true };
   } catch {
-    return { valid: false, error: "通信に失敗しました。時間をおいて再度お試しください" };
+    return {
+      valid: false,
+      definitive: false,
+      error: "通信に失敗しました。時間をおいて再度お試しください",
+    };
   }
 }
