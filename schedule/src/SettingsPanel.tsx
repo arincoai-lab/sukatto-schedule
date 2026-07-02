@@ -7,6 +7,7 @@ import { listOutlookCalendars } from "./calendar/outlook-events";
 import IcloudSection from "./IcloudSection";
 import TemplatesEditor from "./templates/TemplatesEditor";
 import { FREE_TEMPLATE_LIMIT, PRO_PURCHASE_URL, verifyLicense } from "./store/pro";
+import { saveLicense } from "./store/license";
 import { track, EVENTS } from "./util/analytics";
 
 // 設定パネル: GoogleクライアントID（公開値）、書き込み先カレンダー、既定所要時間、
@@ -120,6 +121,8 @@ function ProSection({ isPro, onUnlock }: { isPro: boolean; onUnlock: () => void 
     const result = await verifyLicense(key);
     setBusy(false);
     if (result.valid) {
+      // キーを端末に保存し、以後の起動時再検証（返金・係争対策）に使う
+      saveLicense(key.trim());
       track(EVENTS.proUnlocked);
       onUnlock();
     } else {
