@@ -1,6 +1,6 @@
 # スカッと予定 — ローンチ進捗 & 次にやること
 
-> このファイルは作業のハンドオフ。次回はここを見れば続きから始められる。最終更新: 2026-06-25
+> このファイルは作業のハンドオフ。次回はここを見れば続きから始められる。最終更新: 2026-07-02
 
 ## 主要URL / プロジェクト
 - **LP**: https://sukatto.rt-ai-lab.com （Vercelプロジェクト `sukatto-schedule-grin` / root Next.js）
@@ -14,6 +14,21 @@
 - ドメイン: LP・アプリともサブドメイン割当・SSL有効
 - Google OAuth: **本番公開（In production）** ＝誰でも利用可（審査前は「未確認」警告＋〜100人枠）。スコープ=**最小化済み**（`calendar.events` + `calendar.calendarlist.readonly`。フル `auth/calendar` は廃止。実装 `schedule/src/calendar/google-auth.ts`、Console登録も同じ2つ）
 - Web Analytics: LP・アプリ両方で稼働（PV＋カスタムイベント）
+
+## 🔧 マージ待ち: PR #14（コードレビュー一括修正＋品質基盤）
+https://github.com/arincoai-lab/sukatto-schedule/pull/14 — スコープ/ブランディング不変＝OAuth審査に影響なし。
+- バグ修正3件（月表示のOutlook/iCloudのみ接続、LLM時刻のUTCずれ、場所の正規表現クラッシュ）
+- テスト基盤: vitest＋テスト57件（`cd schedule && npm test`）、ESLint（`npm run lint`）
+- テストが発見した追加バグも修正済み: **webcal:// のICS購読が常に400になっていた**（URL#protocol代入は仕様上無効）
+- セキュリティ: ヘッダ4種＋**CSPはReport-Only**（下記の昇格手順参照）、api/caldav・api/icsのOriginチェック
+- Pro返金対策: ライセンスキー保存＋7日毎の起動時再検証（fail-open）
+- リファクタ: `schedule/src/calendar/providers.ts` に3社分岐を集約（App.tsx 758→648行）
+- **マージ後の実機確認**: 月カレンダー表示 / 3社同時登録 / iCloud・ICS取得 / コンソールのCSP違反レポート
+
+### CSPをReport-Only→本適用へ昇格する手順
+1. PR #14マージ後、本番アプリで一巡操作: Google接続→音声入力→写真OCR→AI解析(WebLLM DL含む)→3社同時登録→iCloud/ICS表示→Outlook接続(有効なら)
+2. DevTools Consoleに `[Report Only]` のCSP違反が**出ないこと**を確認（出たら該当ホストを `schedule/vercel.json` の該当ディレクティブに追加）
+3. 違反ゼロを確認したら `schedule/vercel.json` のヘッダ名 `Content-Security-Policy-Report-Only` → `Content-Security-Policy` に変更してデプロイ
 
 ## ⏳ 次にやること（優先順）
 
@@ -60,7 +75,7 @@
 
 ### 3.（任意・小掃除）
 - 重複の **無印 `sukatto-schedule` プロジェクトを削除**（取り違え防止。アプリ本番は `-oeyl`）
-- ビルドログのTS警告解消: `schedule/` に `@types/node` 追加＋ `api/*.ts` 用 tsconfig で `types:["node"]`（`Buffer`/`process` の TS2591。**非致命・実行時は正常**なので急がない）
+- ~~ビルドログのTS警告解消~~ → **PR #14で解消済み**（@types/node追加＋tsconfig types）
 
 ## 検証フェーズで見る指標（Vercel Web Analytics → Events）
 無料ローンチ→支払い意思の検証。逆算で「Pro到達まで来る人数」を見る。
@@ -70,7 +85,8 @@
 - `voice_limit_hit` / `template_limit_hit`（無料上限の効き具合）
 
 ## 開発メモ
-- ローカルの本体リポジトリ（`apps/`）は作業途中の未コミット変更あり。コードの正は **origin/main**。コード変更時は `git worktree add <path> origin/main` でクリーンに作業→PR→main マージ（LP/アプリのVercelが自動デプロイ）。
+- ローカルの本体リポジトリ（`apps/`）は **origin/main と同期済み・クリーン**（2026-07-02正常化）。コード変更はブランチを切って作業→PR→main マージ（LP/アプリのVercelが自動デプロイ）。gitが固まる時は `.git/index.lock` 削除＋`git -c core.fsmonitor=false ...` を疑う。
+- 品質チェック: `cd schedule && npm test`（vitest 57件）/ `npm run lint` / `npm run typecheck` / `npm run build`。**`api/` 配下は全ファイルがVercel Functionになるため、テストやヘルパーは置かない**（`server/` に置く）。
 - このNext.js LPは Next 16（Turbopack/App Router）。`app/` のみビルドされ `schedule/` は別ツールチェーン（root tsconfig で `schedule` を exclude 済み）。
 - 静的(Vite)プロジェクトのWeb Analyticsは「Enable→再デプロイ」で `/_vercel/insights/script.js` が200配信される（Next.jsは自動）。
 - 関連事業/収益化方針はメモリ参照（無料ローンチ→検証→売れてから最小paywall。買い切り一本・サブスクなし）。
