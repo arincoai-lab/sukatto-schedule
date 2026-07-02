@@ -214,7 +214,8 @@ export default function App() {
   const refreshMonth = useCallback(async () => {
     const token = getAccessToken();
     const hasIcs = settings.icsSources.length > 0;
-    if (!token && !hasIcs) return;
+    const hasIcloud = hasIcloudCred() && settings.icloudWriteCalendarUrls.length > 0;
+    if (!token && !hasIcs && !hasIcloud && !hasOutlookValidToken()) return;
     setMonthLoading(true);
     try {
       const first = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
@@ -229,7 +230,7 @@ export default function App() {
     } finally {
       setMonthLoading(false);
     }
-  }, [loadRange, monthCursor, settings.icsSources.length]);
+  }, [loadRange, monthCursor, settings.icsSources.length, settings.icloudWriteCalendarUrls.length]);
 
   // いずれかの予定ソース(Google/Outlook/iCloud/ICS)があるか
   const hasAnySource =
