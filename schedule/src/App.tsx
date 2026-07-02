@@ -184,11 +184,9 @@ export default function App() {
     if (!loadSettings().isPro) return;
     void revalidateProLicense().then((outcome) => {
       if (outcome !== "revoke") return;
-      setSettings((s) => {
-        const next = { ...s, isPro: false };
-        saveSettings(next);
-        return next;
-      });
+      // 永続化はupdaterの外で行う（updater内の副作用はStrictModeで二重実行され得る）
+      saveSettings({ ...loadSettings(), isPro: false });
+      setSettings((s) => ({ ...s, isPro: false }));
       setError("Proライセンスが無効になったため、無料プランに切り替えました。設定からキーを再入力できます。");
     });
   }, []);
