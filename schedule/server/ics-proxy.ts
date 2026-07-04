@@ -34,17 +34,17 @@ export async function fetchIcs(rawUrl: string | null): Promise<IcsFetchResult> {
     return { ok: false, status: 400, body: "", error: "url パラメータが必要です" };
   }
 
+  // webcal:// は https へ読み替え。URL#protocol の代入は「非特殊→特殊スキーム」の
+  // 変更をURL仕様が無視するため機能しない。パース前に文字列で置換する。
+  const normalized = rawUrl.replace(/^webcal:\/\//i, "https://");
+
   let url: URL;
   try {
-    url = new URL(rawUrl);
+    url = new URL(normalized);
   } catch {
     return { ok: false, status: 400, body: "", error: "URLが不正です" };
   }
 
-  // webcal:// は https へ読み替え
-  if (url.protocol === "webcal:") {
-    url.protocol = "https:";
-  }
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return { ok: false, status: 400, body: "", error: "http/https のみ許可されます" };
   }
