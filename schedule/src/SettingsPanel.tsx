@@ -157,7 +157,7 @@ function ProSection({ isPro, onUnlock }: { isPro: boolean; onUnlock: () => void 
         disabled={!key.trim() || busy}
         onClick={unlock}
       >
-        {busy ? "確認中…" : "ライセンスで解除"}
+        {busy ? "確認しています…" : "このキーでProを有効にする"}
       </button>
     </div>
   );
