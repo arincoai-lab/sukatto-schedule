@@ -11,7 +11,12 @@ export default function Nav() {
           <span className="dot" aria-hidden />
           {SITE_NAME}
         </Link>
-        <TryButton from="nav" label="使ってみる" variant="ghost" />
+        <div className="nav-right">
+          <Link href="/blog" className="nav-link">
+            ブログ
+          </Link>
+          <TryButton from="nav" label="使ってみる" variant="ghost" />
+        </div>
       </div>
     </nav>
   );
